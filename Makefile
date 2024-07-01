@@ -20,4 +20,4 @@ build: ${OUTPUT} ${OUTPUT}.sha256
 
 .PHONY: clean
 clean:
-	rm -f lens-k8s-proxy-*
+	rm -f freelens-k8s-proxy-*

@@ -57,7 +57,7 @@ func main() {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	fmt.Printf("~~ Lens K8s Proxy, '%s' ~~\n", Version)
+	fmt.Printf("~~ Freelens K8s Proxy, '%s' ~~\n", Version)
 	fmt.Printf("kubeconfig: %s\n", kubeconfig)
 	fmt.Printf("api prefix: %s\n", apiPrefix)
 
