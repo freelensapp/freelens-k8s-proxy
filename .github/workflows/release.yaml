@@ -6,6 +6,8 @@ on:
       - 'v*'
 jobs:
   build:
+    permissions:
+      contents: write
     name: Build
     runs-on: ${{ matrix.os }}
     strategy:
@@ -28,8 +30,8 @@ jobs:
         env:
           GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ github.ref_name }}
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
-            lens-k8s-proxy-${{ matrix.RUNNER_OS }}-${{ matrix.goarch }}
-            lens-k8s-proxy-${{ matrix.RUNNER_OS }}-${{ matrix.goarch }}.sha256
+            freelens-k8s-proxy-${{ matrix.RUNNER_OS }}-${{ matrix.goarch }}
+            freelens-k8s-proxy-${{ matrix.RUNNER_OS }}-${{ matrix.goarch }}.sha256
