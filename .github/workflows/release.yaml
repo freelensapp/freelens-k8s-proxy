@@ -15,7 +15,7 @@ jobs:
         include:
           - os: ubuntu-20.04
             RUNNER_OS: linux
-          - os: macos-11
+          - os: macos-12
             RUNNER_OS: darwin
           - os: windows-2019
             RUNNER_OS: windows
