@@ -1,1 +1,11 @@
-lens-k8s-proxy*
+?.*
+*~
+*.backup
+*.bak
+*.log
+dist/
+tmp/
+/freelens-k8s-proxy
+.DS_Store
+.idea
+.vscode

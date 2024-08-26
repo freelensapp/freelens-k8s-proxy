@@ -1,4 +1,4 @@
-module github.com/lensapp/lens-k8s-proxy
+module github.com/freelensapp/freelens-k8s-proxy
 
 go 1.17
 
