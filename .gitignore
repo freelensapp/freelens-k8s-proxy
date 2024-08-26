@@ -2,6 +2,7 @@
 *~
 *.backup
 *.bak
+*.exe
 *.log
 dist/
 tmp/
