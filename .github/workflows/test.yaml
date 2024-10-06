@@ -35,7 +35,8 @@ jobs:
       - name: Fetch Git tags
         run: git fetch --force --tags
 
-      - uses: jdx/mise-action@v2
+      - name: Set up Go
+        uses: actions/setup-go@v5
 
       - name: Test binary
         run: |
