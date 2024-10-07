@@ -16,10 +16,10 @@ import (
 	"k8s.io/kubectl/pkg/proxy"
 )
 
-// These get overridden at build time: -X main.Version=$VERSION
+// These get overridden at build time: -X main.version=$VERSION
 var (
-	Version = "0.0.1"
-	Commit  = ""
+	version = "dev"
+	commit  = ""
 )
 
 type VersionData struct {
@@ -32,8 +32,8 @@ func main() {
 
 	if len(argsWithoutProg) > 0 && argsWithoutProg[0] == "version" {
 		err := json.NewEncoder(os.Stdout).Encode(&VersionData{
-			Version: Version,
-			Commit:  Commit,
+			Version: version,
+			Commit:  commit,
 		})
 
 		if err != nil {
@@ -57,7 +57,7 @@ func main() {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
-	fmt.Printf("~~ Freelens K8s Proxy, '%s' ~~\n", Version)
+	fmt.Printf("~~ Freelens K8s Proxy, '%s' ~~\n", version)
 	fmt.Printf("kubeconfig: %s\n", kubeconfig)
 	fmt.Printf("api prefix: %s\n", apiPrefix)
 

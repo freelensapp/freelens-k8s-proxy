@@ -1,0 +1,1 @@
+goreleaser 2.3.2 # datasource=github-releases depName=goreleaser/goreleaser

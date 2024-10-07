@@ -1,17 +1,24 @@
-name: Release
+name: Test
 
 on:
   push:
-    tags:
-      - v*
+    branches:
+      - "**"
+    paths-ignore:
+      - .editorconfig
+      - .gitignore
+      - .markdownlint.yaml
+      - .trunk/**
+      - LICENSE
+      - README.md
+  pull_request:
+    branches:
+      - main
   workflow_dispatch: {}
 
-permissions:
-  contents: write
-
 jobs:
-  release:
-    name: Release
+  test:
+    name: Test
 
     permissions:
       id-token: write
@@ -37,6 +44,8 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: 2.3.2 # datasource=github-releases depName=goreleaser/goreleaser
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          args: build --clean --snapshot --single-target --output freelens-k8s-proxy
+
+      - name: Test binary
+        run: |
+          ./freelens-k8s-proxy version | grep gitVersion
