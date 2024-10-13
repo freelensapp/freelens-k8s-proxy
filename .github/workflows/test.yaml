@@ -46,6 +46,20 @@ jobs:
           version: 2.3.2 # datasource=github-releases depName=goreleaser/goreleaser
           args: build --clean --snapshot --single-target --output freelens-k8s-proxy
 
-      - name: Test binary
+      - name: Install minikube (Linux)
+        if: runner.os == 'Linux'
+        uses: medyagh/setup-minikube@master
+        with:
+          kubernetes-version: v1.31.1 # datasource=github-releases depName=kubernetes/kubernetes
+
+      - name: Run binary in the background
         run: |
-          ./freelens-k8s-proxy version | grep gitVersion
+          ./freelens-k8s-proxy > freelens-k8s-proxy.log &
+          echo $! > freelens-k8s-proxy.pid
+          sleep 5
+          cat freelens-k8s-proxy.log
+
+      - name: Test the output
+        run: |
+          url=http://$(grep ^starting freelens-k8s-proxy.log | sed 's/.* //')/version
+          curl -s $url | jq -c . | grep platform
