@@ -63,7 +63,3 @@ jobs:
         run: |
           url=http://$(grep ^starting freelens-k8s-proxy.log | sed 's/.* //')/version
           curl -s $url | jq -c . | grep platform
-
-      - name: Stop binary in the background
-        if: always()
-        run: kill $(cat freelens-k8s-proxy.pid)
