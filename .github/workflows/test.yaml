@@ -50,7 +50,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: medyagh/setup-minikube@master
         with:
-          kubernetes-version: v1.31.1 # datasource=github-releases depName=kubernetes/kubernetes
+          kubernetes-version: 1.32.0 # datasource=github-releases depName=kubernetes/kubernetes
 
       - name: Run binary in the background
         run: |
