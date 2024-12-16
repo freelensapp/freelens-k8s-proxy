@@ -43,7 +43,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: 2.3.2 # datasource=github-releases depName=goreleaser/goreleaser
+          version: 2.5.0 # datasource=github-releases depName=goreleaser/goreleaser
           args: build --clean --snapshot --single-target --output freelens-k8s-proxy
 
       - name: Install minikube (Linux)
