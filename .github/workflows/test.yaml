@@ -16,6 +16,9 @@ on:
       - main
   workflow_dispatch: {}
 
+env:
+  kubernetes_version: 1.31.1 # datasource=github-releases depName=kubernetes/kubernetes
+
 jobs:
   test:
     name: Test
@@ -50,7 +53,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: medyagh/setup-minikube@master
         with:
-          kubernetes-version: v1.31.1 # datasource=github-releases depName=kubernetes/kubernetes
+          kubernetes-version: v${{ env.kubernetes_version }}
 
       - name: Run binary in the background
         run: |
