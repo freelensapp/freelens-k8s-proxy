@@ -1,6 +1,12 @@
 name: Go get update
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - go.mod
+      - go.sum
   schedule:
     - cron: "58 8 * * *"
   workflow_dispatch: {}

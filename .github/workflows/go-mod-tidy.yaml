@@ -1,6 +1,12 @@
 name: Go mod tidy
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - go.mod
+      - go.sum
   schedule:
     - cron: "48 8 * * *"
   workflow_dispatch: {}
