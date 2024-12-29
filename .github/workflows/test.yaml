@@ -17,7 +17,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  kubernetes_version: 1.31.1 # datasource=github-releases depName=kubernetes/kubernetes
+  kubernetes_version: 1.32.0 # datasource=github-releases depName=kubernetes/kubernetes
 
 jobs:
   test:
