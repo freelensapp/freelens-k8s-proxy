@@ -11,6 +11,7 @@
     'gomodTidy',
   ],
   packageRules: [
+    // update all go dependencies in main module
     {
       groupName: 'all go dependencies main',
       groupSlug: 'all-go-deps-main',
@@ -22,6 +23,7 @@
         'gomodUpdateImportPaths',
       ],
     },
+    // ignore go directive as it is minimal working version
     {
       enabled: false,
       matchFileNames: [
@@ -39,9 +41,11 @@
     },
   ],
   constraints: {
+    // allow minor updates for go
     go: '>= 1.23',
   },
   customManagers: [
+    // .go-version file
     {
       customType: 'regex',
       extractVersionTemplate: '^(?<version>.*)$',
@@ -55,6 +59,7 @@
       depNameTemplate: 'go',
       versioningTemplate: 'semver',
     },
+    // renovate hints after comment
     {
       customType: 'regex',
       extractVersionTemplate: '^v?(?<version>.*)$',
