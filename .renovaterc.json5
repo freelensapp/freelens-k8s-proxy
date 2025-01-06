@@ -1,77 +1,72 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":semanticCommitsDisabled"
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    ':semanticCommitsDisabled',
   ],
-  "addLabels": [
-    "renovate"
+  addLabels: [
+    'renovate',
   ],
-  "postUpdateOptions": [
-    "gomodTidy"
+  postUpdateOptions: [
+    'gomodTidy',
   ],
-  "packageRules": [
-    // update all go dependencies in main module
+  packageRules: [
     {
-      "groupName": "all go dependencies main",
-      "groupSlug": "all-go-deps-main",
-      "matchFiles": [
-        "go.mod",
-        "go.sum"
+      groupName: 'all go dependencies main',
+      groupSlug: 'all-go-deps-main',
+      matchFileNames: [
+        'go.mod',
+        'go.sum',
       ],
-      "postUpdateOptions": [
-        "gomodUpdateImportPaths"
-      ]
+      postUpdateOptions: [
+        'gomodUpdateImportPaths',
+      ],
     },
-    // ignore go directive as it is minimal working version
     {
-      "enabled": "false",
-      "matchFiles": [
-        "go.mod"
+      enabled: false,
+      matchFileNames: [
+        'go.mod',
       ],
-      "matchDepNames": [
-        "go"
+      matchDepNames: [
+        'go',
       ],
-      "matchDatasources": [
-        "golang-version"
+      matchDatasources: [
+        'golang-version',
       ],
-      "matchUpdateTypes": [
-        "patch"
-      ]
-    }
+      matchUpdateTypes: [
+        'patch',
+      ],
+    },
   ],
-  "constraints": {
-    // allow minor updates for go
-    "go": ">= 1.23"
+  constraints: {
+    go: '>= 1.23',
   },
-  "customManagers": [
-    // .go-version file
+  customManagers: [
     {
-      "customType": "regex",
-      "extractVersionTemplate": "^(?<version>.*)$",
-      "fileMatch": [
-        "^\\.go-version$"
+      customType: 'regex',
+      extractVersionTemplate: '^(?<version>.*)$',
+      fileMatch: [
+        '^\\.go-version$',
       ],
-      "matchStrings": [
-        "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      matchStrings: [
+        '(?<currentValue>\\d+\\.\\d+\\.\\d+)',
       ],
-      "datasourceTemplate": "golang-version",
-      "depNameTemplate": "go",
-      "versioningTemplate": "semver"
+      datasourceTemplate: 'golang-version',
+      depNameTemplate: 'go',
+      versioningTemplate: 'semver',
     },
-    // renovate hints after comment
     {
-      "customType": "regex",
-      "extractVersionTemplate": "^v?(?<version>.*)$",
-      "fileMatch": [
-        "^\\.github/workflows/.*\\.ya?ml$",
-        "^\\.trunk/trunk.yaml",
-        "^\\.tool-versions$"
+      customType: 'regex',
+      extractVersionTemplate: '^v?(?<version>.*)$',
+      fileMatch: [
+        '^\\.github/workflows/.*\\.ya?ml$',
+        '^\\.trunk/trunk.yaml',
+        '^\\.tool-versions$',
       ],
-      "matchStrings": [
-        "(\\s+|.*?@)(?<currentValue>\\S+)\\s*#\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\n"
+      matchStrings: [
+        '(\\s+|.*?@)(?<currentValue>\\S+)\\s*#\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\n',
       ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
-    }
-  ]
+      versioningTemplate: '{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}',
+    },
+  ],
 }
