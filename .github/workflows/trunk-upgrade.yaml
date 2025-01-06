@@ -1,14 +1,13 @@
-name: Automated go get update
+name: Automated trunk upgrade
 
 on:
   push:
     branches:
       - main
     paths:
-      - go.mod
-      - go.sum
+      - .trunk/**
   schedule:
-    - cron: 58 4 * * *
+    - cron: 38 4 * * *
   workflow_dispatch: {}
 
 permissions:
@@ -16,8 +15,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  go-get-update:
-    name: go get update
+  trunk-upgrade:
+    name: trunk upgrade
 
     runs-on: ubuntu-24.04
     environment: automated
@@ -26,15 +25,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.23.4 # datasource=golang-version depName=go
+      - name: Set up Trunk
+        run: curl https://get.trunk.io -fsSL | bash -s -- -y
 
-      - name: Go get update
+      - name: Trunk upgrade
         run: |
-          go get -u 2>&1 | tee .github/update.log
-          sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^go: /- /' .github/update.log > .github/pr_body.log
+          trunk upgrade --yes-to-all --no-progress --ci --color | tee .github/update.log
+          sed -e '1,/Unpacking Trunk... done/d' -e 's/\x1b\[[0-9;]*m//g' -e 's/^\(  \)\{0,1\}  /\1- /' .github/update.log > .github/pr_body.log
 
       - name: Check for changes
         run: |
@@ -50,10 +47,10 @@ jobs:
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           default_author: github_actions
-          message: Automated go get update
-          new_branch: automated/go-get-update
+          message: Automated trunk upgrade
+          new_branch: automated/trunk-upgrade
           fetch: false
-          push: origin automated/go-get-update --set-upstream --force
+          push: origin automated/trunk-upgrade --set-upstream --force
 
       - name: Create pull request
         id: pr
@@ -63,7 +60,7 @@ jobs:
           github_token: ${{ secrets.GH_TOKEN }}
           target_branch: main
           label: automated
-          title: Automated go get update
+          title: Automated trunk upgrade
           get_diff: false
 
       - name: Update pull request description
@@ -74,6 +71,6 @@ jobs:
 
       - name: Close pull request
         if: env.changes == 'false'
-        run: gh pr list --head automated/go-get-update --json number --jq '.[].number' | xargs -rn1 gh pr close --delete-branch
+        run: gh pr list --head automated/trunk-upgrade --json number --jq '.[].number' | xargs -rn1 gh pr close --delete-branch
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}

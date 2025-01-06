@@ -1,4 +1,4 @@
-name: Go mod tidy
+name: Automated go mod tidy
 
 on:
   push:
@@ -8,40 +8,33 @@ on:
       - go.mod
       - go.sum
   schedule:
-    - cron: "48 8 * * *"
+    - cron: 48 4 * * *
   workflow_dispatch: {}
 
 permissions:
   contents: write
-  id-token: write
   pull-requests: write
 
 jobs:
   go-mod-tidy:
     name: go mod tidy
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-20.04
-            arch: x64
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
+    environment: automated
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: 1.23.4 # datasource=golang-version depName=go
 
       - name: Go mod tidy
-        run: go mod tidy
+        run: |
+          go mod tidy -v 2>&1 | tee .github/update.log
+          sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^go: /- /' .github/update.log > .github/pr_body.log
 
       - name: Check for changes
         run: |
@@ -55,18 +48,32 @@ jobs:
         if: env.changes == 'true'
         uses: EndBug/add-and-commit@v9
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN }}
           default_author: github_actions
           message: Automated go mod tidy
-          new_branch: update/go-mod-tidy
-          push: origin update/go-mod-tidy --set-upstream --force
+          new_branch: automated/go-mod-tidy
+          fetch: false
+          push: origin automated/go-mod-tidy --set-upstream --force
 
       - name: Create pull request
+        id: pr
         if: env.changes == 'true'
         uses: devops-infra/action-pull-request@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN }}
           target_branch: main
-          label: tidy
+          label: automated
           title: Automated go mod tidy
-          get_diff: true
+          get_diff: false
+
+      - name: Update pull request description
+        if: env.changes == 'true'
+        run: gh pr edit ${{ steps.pr.outputs.pr_number }} --body-file .github/pr_body.log
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Close pull request
+        if: env.changes == 'false'
+        run: gh pr list --head automated/go-mod-tidy --json number --jq '.[].number' | xargs -rn1 gh pr close --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
