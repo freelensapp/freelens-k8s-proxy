@@ -1,6 +1,9 @@
 name: Automated trunk upgrade
 
 on:
+  issue_comment:
+    types:
+      - created
   push:
     branches:
       - main
@@ -21,6 +24,10 @@ jobs:
     runs-on: ubuntu-24.04
     environment: automated
 
+    if: >-
+      github.event_name != 'issue_comment' ||
+      contains(github.event.comment.body, '/rerun')
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,6 +47,13 @@ jobs:
           else
             echo "changes=true" >> $GITHUB_ENV
           fi
+
+      - name: Trunk Check
+        if: env.changes == 'true'
+        uses: trunk-io/trunk-action@v1
+        with:
+          check-mode: all
+        continue-on-error: true
 
       - name: Commit and push to branch
         if: env.changes == 'true'

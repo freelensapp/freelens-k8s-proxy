@@ -1,12 +1,13 @@
 name: Trunk Check
 
 on:
-  - pull_request
-  - push
-  - workflow_dispatch
-
-permissions:
-  contents: read
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
 
 jobs:
   trunk:
