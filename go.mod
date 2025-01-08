@@ -1,6 +1,6 @@
 module github.com/freelensapp/freelens-k8s-proxy
 
-go 1.23.0
+go 1.23.1
 
 toolchain go1.23.4
 
