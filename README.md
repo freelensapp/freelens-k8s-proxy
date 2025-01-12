@@ -1,6 +1,11 @@
-# FreeLens K8s Proxy
+# Freelens K8s Proxy
 
-This repository is a fork of [lens-k8s-proxy](https://github.com/lensapp/lens-k8s-proxy/tree/main).
+<!-- markdownlint-disable MD013 -->
+
+[![GitHub](https://img.shields.io/github/v/release/freelensapp/freelens-k8s-proxy?display_name=tag&sort=semver)](https://github.com/freelensapp/freelens-k8s-proxy)
+[![Test](https://github.com/freelensapp/freelens-k8s-proxy/actions/workflows/test.yaml/badge.svg)](https://github.com/freelensapp/freelens-k8s-proxy/actions/workflows/test.yaml)
+
+<!-- markdownlint-enable MD013 -->
 
 More secure alternative to `kubectl proxy`.
 
@@ -25,4 +30,10 @@ winget install goreleaser.goreleaser
 
 ## License
 
-Licensed under the [MIT license](./LICENSE).
+This repository is a fork of [lens-k8s-proxy](https://github.com/lensapp/lens-k8s-proxy/tree/main).
+
+Copyright (c) 2024-2025 Freelens Authors.
+
+Copyright (c) 2022 Mirantis, Inc.
+
+[MIT License](https://opensource.org/licenses/MIT)
