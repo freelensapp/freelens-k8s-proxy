@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 env:
-  kubernetes_version: 1.32.0 # datasource=github-releases depName=kubernetes/kubernetes
+  kubernetes_version: 1.32.1 # datasource=github-releases depName=kubernetes/kubernetes
 
 jobs:
   test:
