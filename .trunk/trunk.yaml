@@ -24,7 +24,7 @@ lint:
     - golangci-lint@1.63.4
     - markdownlint@0.43.0
     - prettier@3.4.2
-    - renovate@39.100.2
+    - renovate@39.107.2
     - trufflehog@3.88.2
     - yamllint@1.35.1
   disabled:
