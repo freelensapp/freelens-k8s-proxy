@@ -29,18 +29,18 @@
       "depNameTemplate": "go",
       "versioningTemplate": "semver"
     },
-    // .opentofu-version file
+    // go.mod file
     {
       "customType": "regex",
       "extractVersionTemplate": "^(?<version>.*)$",
       "fileMatch": [
-        "^\\.opentofu-version$"
+        "^go\\.mod$"
       ],
       "matchStrings": [
-        "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+        "\\sgo\\s(?<currentValue>.+?)\\s"
       ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "opentofu/opentofu",
+      "datasourceTemplate": "golang-version",
+      "depNameTemplate": "go",
       "versioningTemplate": "semver"
     },
     // renovate hints after comment
