@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  rebase:
+  run:
     name: Run
 
     runs-on: ubuntu-24.04
