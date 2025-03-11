@@ -22,6 +22,7 @@ permissions:
 
 env:
   kubernetes_version: 1.32.2 # datasource=github-releases depName=kubernetes/kubernetes
+  minikube_version: 1.35.0 # datasource=github-releases depName=kubernetes/minikube
 
 jobs:
   test:
@@ -51,9 +52,12 @@ jobs:
 
       - name: Install minikube (Linux)
         if: runner.os == 'Linux'
-        uses: medyagh/setup-minikube@master
+        uses: manusa/actions-setup-minikube@v2.13.1
         with:
-          kubernetes-version: v${{ env.kubernetes_version }}
+          minikube version: v${{ env.minikube_version }}
+          kubernetes version: v${{ env.kubernetes_version }}
+          github token: ${{ secrets.GITHUB_TOKEN }}
+          driver: docker
 
       - name: Run binary in the background
         run: |
