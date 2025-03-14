@@ -1,1 +1,1 @@
-goreleaser 2.8.0 # datasource=github-releases depName=goreleaser/goreleaser
+goreleaser 2.8.1 # datasource=github-releases depName=goreleaser/goreleaser
