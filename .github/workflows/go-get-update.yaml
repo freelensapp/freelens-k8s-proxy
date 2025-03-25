@@ -46,7 +46,7 @@ jobs:
           if [[ -s .github/update.log ]]; then
             go mod tidy -v 2>&1 | tee -a .github/update.log
           fi
-          sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^go: /- /' .github/update.log | grep -v "^- downloading " > .github/pr_body.log
+          sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^go: /- /' .github/update.log | grep -v "^- downloading " > .github/pr_body.log || true
 
       - name: Check for changes
         run: |
