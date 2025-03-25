@@ -43,7 +43,7 @@ jobs:
       - name: Go mod tidy
         run: |
           go mod tidy -v 2>&1 | tee .github/update.log
-          sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^go: /- /' .github/update.log > .github/pr_body.log
+          sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^go: /- /' .github/update.log | grep -v "^- downloading " > .github/pr_body.log
 
       - name: Check for changes
         run: |
