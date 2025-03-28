@@ -24,13 +24,13 @@ lint:
     - golangci-lint@1.64.8
     - markdownlint@0.44.0
     - prettier@3.5.3
-    - renovate@39.210.1
     - trufflehog@3.88.18
     - yamllint@1.36.2
   disabled:
     - checkov
     - gokart
     - osv-scanner
+    - renovate
 actions:
   enabled:
     - trunk-announce
