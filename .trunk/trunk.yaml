@@ -24,7 +24,7 @@ lint:
     - golangci-lint@1.64.8
     - markdownlint@0.44.0
     - prettier@3.5.3
-    - trufflehog@3.88.20
+    - trufflehog@3.88.22
     - yamllint@1.37.0
   disabled:
     - checkov
