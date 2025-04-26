@@ -18,11 +18,10 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - golangci-lint2@2.1.5
     - actionlint@1.7.7
     - git-diff-check
-    - gofmt@1.20.4
-    - golangci-lint@1.64.8
+    - gofmt@1.24.2 # datasource=golang-version depName=go
+    - golangci-lint2@2.1.5
     - markdownlint@0.44.0
     - prettier@3.5.3
     - trufflehog@3.88.25

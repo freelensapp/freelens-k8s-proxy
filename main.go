@@ -99,7 +99,8 @@ func main() {
 
 	fmt.Println("shutting down ...")
 
-	l.Close()
+	_ = l.Close()
+
 	os.Exit(0)
 }
 
