@@ -19,8 +19,8 @@
     {
       "customType": "regex",
       "extractVersionTemplate": "^(?<version>.*)$",
-      "fileMatch": [
-        "^\\.go-version$"
+      "managerFilePatterns": [
+        "/^\\.go-version$/"
       ],
       "matchStrings": [
         "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
@@ -33,8 +33,8 @@
     {
       "customType": "regex",
       "extractVersionTemplate": "^(?<version>.*)$",
-      "fileMatch": [
-        "^go\\.mod$"
+      "managerFilePatterns": [
+        "/^go\\.mod$/"
       ],
       "matchStrings": [
         "\\sgo\\s(?<currentValue>.+?)\\s"
@@ -47,10 +47,10 @@
     {
       "customType": "regex",
       "extractVersionTemplate": "^v?(?<version>.*)$",
-      "fileMatch": [
-        "^\\.github/workflows/.*\\.ya?ml$",
-        "^\\.trunk/trunk.yaml",
-        "^\\.tool-versions$"
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.*\\.ya?ml$/",
+        "/^\\.trunk/trunk.yaml/",
+        "/^\\.tool-versions$/"
       ],
       "matchStrings": [
         "(\\s+|.*?@)(?<currentValue>\\S+)\\s*#\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\n"
