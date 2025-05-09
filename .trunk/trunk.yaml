@@ -12,7 +12,7 @@ plugins:
 # Many linters and tools depend on runtimes - configure them here. (https://docs.trunk.io/runtimes)
 runtimes:
   enabled:
-    - go@1.24.2 # datasource=golang-version depName=go
+    - go@1.24.3 # datasource=golang-version depName=go
     - node@20.18.0
     - python@3.11.9
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
@@ -53,7 +53,7 @@ lint:
   enabled:
     - actionlint@1.7.7
     - git-diff-check
-    - gofmt@1.24.2 # datasource=golang-version depName=go
+    - gofmt@1.24.3 # datasource=golang-version depName=go
     - golangci-lint2@2.1.6
     - markdownlint@0.44.0
     - yamlfmt@0.16.0
