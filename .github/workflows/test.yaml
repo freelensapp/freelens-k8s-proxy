@@ -67,6 +67,6 @@ jobs:
           cat freelens-k8s-proxy.log
 
       - name: Test the output
-        run: |
+        run: |-
           url=http://$(grep ^starting freelens-k8s-proxy.log | sed 's/.* //')/version
           curl -fsS $url | jq -ce . | grep platform
