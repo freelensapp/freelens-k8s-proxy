@@ -63,19 +63,19 @@ jobs:
           push: origin automated/go-mod-tidy --set-upstream --force
 
       - name: Create pull request
-        id: pr
         if: env.changes == 'true'
-        uses: devops-infra/action-pull-request@master
-        with:
-          github_token: ${{ secrets.GH_TOKEN }}
-          target_branch: main
-          label: automated
-          title: Automated go mod tidy
-          get_diff: false
-
-      - name: Update pull request description
-        if: env.changes == 'true'
-        run: gh pr edit ${{ steps.pr.outputs.pr_number }} --body-file .github/pr_body.log
+        run: |-
+          if [[ $(gh pr view automated/go-mod-tidy --json state --jq .state || true) != "OPEN" ]]; then
+            gh pr create \
+              --head automated/go-mod-tidy \
+              --title "Automated go mod tidy" \
+              --body-file .github/pr_body.log \
+              --label automated
+          else
+            gh pr edit automated/go-mod-tidy \
+              --title "Automated go mod tidy" \
+              --body-file .github/pr_body.log
+          fi
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
