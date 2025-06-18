@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  kubernetes_version: 1.33.1 # datasource=github-releases depName=kubernetes/kubernetes
+  kubernetes_version: 1.33.2 # datasource=github-releases depName=kubernetes/kubernetes
   minikube_version: 1.36.0 # datasource=github-releases depName=kubernetes/minikube
 
 jobs:
