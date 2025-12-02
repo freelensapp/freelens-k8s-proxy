@@ -1,6 +1,6 @@
 module github.com/freelensapp/freelens-k8s-proxy
 
-go 1.25.4
+go 1.25.5
 
 require (
 	k8s.io/cli-runtime v0.34.2
