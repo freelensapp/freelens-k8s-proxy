@@ -21,8 +21,8 @@ lint:
     - actionlint@1.7.9
     - git-diff-check
     - gofmt@1.25.5 # datasource=golang-version depName=go
-    - golangci-lint2@2.6.2
-    - markdownlint@0.46.0
+    - golangci-lint2@2.7.2
+    - markdownlint@0.47.0
     - yamlfmt@0.20.0
     - yamllint@1.37.1
   disabled:
