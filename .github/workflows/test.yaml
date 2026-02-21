@@ -45,7 +45,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: 2.13.3 # datasource=github-releases depName=goreleaser/goreleaser
           args: build --clean --snapshot --single-target --output freelens-k8s-proxy
