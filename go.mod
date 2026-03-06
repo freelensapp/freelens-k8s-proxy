@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	k8s.io/cli-runtime v0.35.1
 	k8s.io/client-go v0.35.1
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/kubectl v0.35.1
 )
 
