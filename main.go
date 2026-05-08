@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -73,11 +74,26 @@ func main() {
 		klog.Fatal("failed to initialize kubeconfig", err)
 	}
 
-	server, err := proxy.NewServer("", apiPrefix, "", nil, clientConfig, 0, true)
+	proxyHandler, err := proxy.NewProxyHandler(apiPrefix, nil, clientConfig, 0, true)
 
 	if err != nil {
-		klog.Fatal("failed to initialize proxy", err)
+		klog.Fatal("failed to initialize proxy handler", err)
 	}
+
+	upgradeHandler, err := newUpgradePipeHandler(apiPrefix, clientConfig)
+
+	if err != nil {
+		klog.Fatal("failed to initialize upgrade pipe handler", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle(apiPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isUpgradeRequest(r) {
+			upgradeHandler.ServeHTTP(w, r)
+			return
+		}
+		proxyHandler.ServeHTTP(w, r)
+	}))
 
 	l, err := getListener(proxyCert, proxyKey)
 
@@ -87,10 +103,12 @@ func main() {
 
 	fmt.Printf("starting to serve on %s\n", l.Addr().String())
 
-	go func() {
-		err := server.ServeOnListener(l)
+	httpServer := &http.Server{Handler: mux}
 
-		if err != nil {
+	go func() {
+		err := httpServer.Serve(l)
+
+		if err != nil && err != http.ErrServerClosed {
 			klog.Fatal(err)
 		}
 	}()
