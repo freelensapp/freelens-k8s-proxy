@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -8,12 +9,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	apimachineryproxy "k8s.io/apimachinery/pkg/util/proxy"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/transport"
 	"k8s.io/klog/v2"
 )
+
+const upstreamDialTimeout = 30 * time.Second
 
 // upgradePipeHandler proxies HTTP upgrade requests (WebSocket, SPDY) by opening
 // a raw TLS connection to the upstream and piping bytes bidirectionally.
@@ -51,9 +55,9 @@ func newUpgradePipeHandler(apiPrefix string, cfg *rest.Config) (*upgradePipeHand
 	if tlsConfig == nil {
 		tlsConfig = &tls.Config{}
 	}
-	if len(tlsConfig.NextProtos) == 0 {
-		tlsConfig.NextProtos = []string{"http/1.1"}
-	}
+	// Force HTTP/1.1 ALPN: HTTP/2 cannot carry the SPDY/WebSocket upgrade
+	// negotiation we pipe through this handler.
+	tlsConfig.NextProtos = []string{"http/1.1"}
 
 	authWrappers, err := transport.HTTPWrappersForConfig(transportConfig, apimachineryproxy.MirrorRequest)
 	if err != nil {
@@ -89,6 +93,28 @@ func singleJoiningSlash(a, b string) string {
 		return a + "/" + b
 	}
 	return a + b
+}
+
+func (h *upgradePipeHandler) dialUpstream(ctx context.Context, addr, sni string) (net.Conn, error) {
+	dialer := &net.Dialer{Timeout: upstreamDialTimeout}
+	rawConn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	if h.target.Scheme != "https" {
+		return rawConn, nil
+	}
+
+	tlsCfg := h.tlsConfig.Clone()
+	if tlsCfg.ServerName == "" {
+		tlsCfg.ServerName = sni
+	}
+	tlsConn := tls.Client(rawConn, tlsCfg)
+	if err := tlsConn.HandshakeContext(ctx); err != nil {
+		_ = rawConn.Close()
+		return nil, err
+	}
+	return tlsConn, nil
 }
 
 func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -132,21 +158,18 @@ func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	authedReq := resp.Request
 
-	addr := h.target.Host
-	if !strings.Contains(addr, ":") {
-		addr += ":443"
-	}
-
-	tlsCfg := h.tlsConfig.Clone()
-	if tlsCfg.ServerName == "" {
-		host, _, splitErr := net.SplitHostPort(addr)
-		if splitErr != nil {
-			host = addr
+	host := h.target.Hostname()
+	port := h.target.Port()
+	if port == "" {
+		if h.target.Scheme == "http" {
+			port = "80"
+		} else {
+			port = "443"
 		}
-		tlsCfg.ServerName = host
 	}
+	addr := net.JoinHostPort(host, port)
 
-	upstreamConn, err := tls.Dial("tcp", addr, tlsCfg)
+	upstreamConn, err := h.dialUpstream(r.Context(), addr, host)
 	if err != nil {
 		klog.Errorf("[UPGRADE-PIPE] dial %s failed: %v", addr, err)
 		http.Error(w, "dial upstream: "+err.Error(), http.StatusBadGateway)
