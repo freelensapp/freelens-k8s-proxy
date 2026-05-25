@@ -104,16 +104,16 @@ func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	targetPath := singleJoiningSlash(h.target.Path, stripped)
 
-	outReq, err := http.NewRequestWithContext(r.Context(), r.Method, "", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	outReq.URL = &url.URL{
+	targetURL := &url.URL{
 		Scheme:   h.target.Scheme,
 		Host:     h.target.Host,
 		Path:     targetPath,
 		RawQuery: r.URL.RawQuery,
+	}
+	outReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL.String(), nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	outReq.Host = h.target.Host
 	outReq.Header = r.Header.Clone()
@@ -126,6 +126,9 @@ func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "auth wrap: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if resp.Body != nil {
+		_ = resp.Body.Close()
 	}
 	authedReq := resp.Request
 
