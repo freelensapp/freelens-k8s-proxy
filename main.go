@@ -50,6 +50,9 @@ func main() {
 	proxyCert := os.Getenv("PROXY_CERT")
 	proxyKey := os.Getenv("PROXY_KEY")
 
+	if !strings.HasPrefix(apiPrefix, "/") {
+		apiPrefix = "/" + apiPrefix
+	}
 	if !strings.HasSuffix(apiPrefix, "/") {
 		apiPrefix += "/"
 	}
