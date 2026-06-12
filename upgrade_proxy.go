@@ -201,11 +201,23 @@ func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	errCh := make(chan error, 2)
 	go func() {
 		_, err := io.Copy(upstreamConn, clientConn)
+		closeWrite(upstreamConn)
 		errCh <- err
 	}()
 	go func() {
 		_, err := io.Copy(clientConn, upstreamConn)
+		closeWrite(clientConn)
 		errCh <- err
 	}()
 	<-errCh
+	<-errCh
+}
+
+// closeWrite signals end-of-stream on the write side of conn if the
+// underlying type supports it, so the peer sees a clean FIN/close_notify
+// rather than an abrupt reset when one direction finishes first.
+func closeWrite(conn net.Conn) {
+	if cw, ok := conn.(interface{ CloseWrite() error }); ok {
+		_ = cw.CloseWrite()
+	}
 }
