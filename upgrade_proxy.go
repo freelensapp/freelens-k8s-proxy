@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -33,6 +35,7 @@ type upgradePipeHandler struct {
 	target       *url.URL
 	tlsConfig    *tls.Config
 	authWrappers http.RoundTripper
+	proxyFunc    func(*http.Request) (*url.URL, error)
 }
 
 func newUpgradePipeHandler(apiPrefix string, cfg *rest.Config) (*upgradePipeHandler, error) {
@@ -64,11 +67,17 @@ func newUpgradePipeHandler(apiPrefix string, cfg *rest.Config) (*upgradePipeHand
 		return nil, fmt.Errorf("auth wrappers: %w", err)
 	}
 
+	proxyFunc := transportConfig.Proxy
+	if proxyFunc == nil {
+		proxyFunc = http.ProxyFromEnvironment
+	}
+
 	return &upgradePipeHandler{
 		apiPrefix:    apiPrefix,
 		target:       target,
 		tlsConfig:    tlsConfig,
 		authWrappers: authWrappers,
+		proxyFunc:    proxyFunc,
 	}, nil
 }
 
@@ -95,12 +104,24 @@ func singleJoiningSlash(a, b string) string {
 	return a + b
 }
 
-func (h *upgradePipeHandler) dialUpstream(ctx context.Context, addr, sni string) (net.Conn, error) {
+func (h *upgradePipeHandler) dialUpstream(ctx context.Context, req *http.Request, addr, sni string) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: upstreamDialTimeout}
-	rawConn, err := dialer.DialContext(ctx, "tcp", addr)
+
+	proxyURL, err := h.proxyFunc(req)
+	if err != nil {
+		return nil, fmt.Errorf("resolve proxy: %w", err)
+	}
+
+	var rawConn net.Conn
+	if proxyURL != nil {
+		rawConn, err = dialThroughProxy(ctx, dialer, proxyURL, addr)
+	} else {
+		rawConn, err = dialer.DialContext(ctx, "tcp", addr)
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	if h.target.Scheme != "https" {
 		return rawConn, nil
 	}
@@ -115,6 +136,88 @@ func (h *upgradePipeHandler) dialUpstream(ctx context.Context, addr, sni string)
 		return nil, err
 	}
 	return tlsConn, nil
+}
+
+// dialThroughProxy opens a TCP connection to the HTTP proxy and issues a
+// CONNECT request so subsequent bytes (TLS handshake or plain HTTP) reach
+// the upstream transparently.
+func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyURL *url.URL, targetAddr string) (net.Conn, error) {
+	proxyHost := proxyURL.Hostname()
+	proxyPort := proxyURL.Port()
+	if proxyPort == "" {
+		if proxyURL.Scheme == "https" {
+			proxyPort = "443"
+		} else {
+			proxyPort = "80"
+		}
+	}
+	proxyAddr := net.JoinHostPort(proxyHost, proxyPort)
+
+	conn, err := dialer.DialContext(ctx, "tcp", proxyAddr)
+	if err != nil {
+		return nil, fmt.Errorf("dial proxy %s: %w", proxyAddr, err)
+	}
+
+	if proxyURL.Scheme == "https" {
+		tlsConn := tls.Client(conn, &tls.Config{ServerName: proxyHost})
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("tls handshake to proxy %s: %w", proxyAddr, err)
+		}
+		conn = tlsConn
+	}
+
+	connectReq := &http.Request{
+		Method: http.MethodConnect,
+		URL:    &url.URL{Opaque: targetAddr},
+		Host:   targetAddr,
+		Header: make(http.Header),
+	}
+	if u := proxyURL.User; u != nil {
+		username := u.Username()
+		password, _ := u.Password()
+		creds := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+		connectReq.Header.Set("Proxy-Authorization", "Basic "+creds)
+	}
+	if err := connectReq.Write(conn); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("write CONNECT to %s: %w", proxyAddr, err)
+	}
+
+	br := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(br, connectReq)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("read CONNECT response from %s: %w", proxyAddr, err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		_ = conn.Close()
+		return nil, fmt.Errorf("proxy CONNECT %s: %s", proxyAddr, resp.Status)
+	}
+
+	if br.Buffered() == 0 {
+		return conn, nil
+	}
+	return &bufferedConn{Conn: conn, r: br}, nil
+}
+
+// bufferedConn glues a bufio.Reader to a net.Conn so leftover bytes parsed
+// by http.ReadResponse during the CONNECT handshake are not lost.
+type bufferedConn struct {
+	net.Conn
+	r *bufio.Reader
+}
+
+func (c *bufferedConn) Read(p []byte) (int, error) {
+	return c.r.Read(p)
+}
+
+func (c *bufferedConn) CloseWrite() error {
+	if cw, ok := c.Conn.(interface{ CloseWrite() error }); ok {
+		return cw.CloseWrite()
+	}
+	return nil
 }
 
 func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +272,7 @@ func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	addr := net.JoinHostPort(host, port)
 
-	upstreamConn, err := h.dialUpstream(r.Context(), addr, host)
+	upstreamConn, err := h.dialUpstream(r.Context(), authedReq, addr, host)
 	if err != nil {
 		klog.Errorf("[UPGRADE-PIPE] dial %s failed: %v", addr, err)
 		http.Error(w, "dial upstream: "+err.Error(), http.StatusBadGateway)
