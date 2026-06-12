@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 env:
-  kind_version: 0.31.0 # datasource=github-releases depName=kubernetes-sigs/kind
-  kubernetes_version: 1.35.1 # datasource=docker depName=kindest/node
+  kind_version: 0.32.0 # datasource=github-releases depName=kubernetes-sigs/kind
+  kubernetes_version: 1.36.1 # datasource=docker depName=kindest/node
 
 jobs:
   test:
@@ -47,7 +47,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
-          version: 2.15.4 # datasource=github-releases depName=goreleaser/goreleaser
+          version: 2.16.0 # datasource=github-releases depName=goreleaser/goreleaser
           args: build --clean --snapshot --single-target --output freelens-k8s-proxy
 
       - name: Start KinD cluster (Linux)
