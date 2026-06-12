@@ -18,7 +18,6 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - pinact@4.1.0
     - actionlint@1.7.12
     - git-diff-check
     - gofmt@1.26.3 # datasource=golang-version depName=go
@@ -31,6 +30,7 @@ lint:
     - gokart
     - grype
     - osv-scanner
+    - pinact
     - prettier
     - renovate
     - trufflehog
