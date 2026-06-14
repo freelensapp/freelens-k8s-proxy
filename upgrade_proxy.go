@@ -167,6 +167,24 @@ func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyURL *url.URL
 		conn = tlsConn
 	}
 
+	// Bound the CONNECT handshake: SetDeadline guards against a proxy that
+	// accepts the TCP connection but stalls before replying, and the watcher
+	// goroutine aborts the blocking Write/ReadResponse if the request context
+	// is canceled. The deadline is cleared before the conn is handed off.
+	if err := conn.SetDeadline(time.Now().Add(upstreamDialTimeout)); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("set deadline on proxy %s: %w", proxyAddr, err)
+	}
+	handshakeDone := make(chan struct{})
+	defer close(handshakeDone)
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = conn.SetDeadline(time.Now())
+		case <-handshakeDone:
+		}
+	}()
+
 	connectReq := &http.Request{
 		Method: http.MethodConnect,
 		URL:    &url.URL{Opaque: targetAddr},
@@ -194,6 +212,12 @@ func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyURL *url.URL
 	if resp.StatusCode != http.StatusOK {
 		_ = conn.Close()
 		return nil, fmt.Errorf("proxy CONNECT %s: %s", proxyAddr, resp.Status)
+	}
+
+	// Clear the handshake deadline so it does not affect the piped stream.
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("clear deadline on proxy %s: %w", proxyAddr, err)
 	}
 
 	if br.Buffered() == 0 {
