@@ -8,3 +8,5 @@ line_length: false
 spaces: false
 url: false
 whitespace: false
+# First line in a file should be a top-level heading
+MD041: false
