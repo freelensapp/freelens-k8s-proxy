@@ -149,7 +149,7 @@ jobs:
       - name: Use the latest AGENTS.md
         run: |
           git fetch origin main
-          git show origin/main:AGENTS.md > AGENTS.md 2>/dev/null || touch AGENTS.md
+          git show origin/main:AGENTS.md > /tmp/AGENTS.md 2>/dev/null || touch /tmp/AGENTS.md
 
       - name: Run Claude Code
         if: github.event_name != 'workflow_dispatch'
@@ -161,7 +161,7 @@ jobs:
             --fallback-model claude-sonnet-4-6
             --max-turns 100
             --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Task" "WebSearch" "WebFetch" "BashOutput" "KillShell" "Bash(pnpm:*)" "Bash(npx:*)" "Bash(node:*)" "Bash(git:*)" "Bash(gh:*)" "Bash(yq:*)" "Bash(jq:*)" "Bash(grep:*)" "Bash(rg:*)" "Bash(sed:*)" "Bash(awk:*)" "Bash(cut:*)" "Bash(tr:*)" "Bash(sort:*)" "Bash(uniq:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(find:*)" "Bash(xargs:*)" "Bash(ls:*)" "Bash(tree:*)" "Bash(mkdir:*)" "Bash(touch:*)" "Bash(cp:*)" "Bash(mv:*)" "Bash(rm:*)" "Bash(tee:*)" "Bash(echo:*)"
-            --append-system-prompt-file AGENTS.md
+            --append-system-prompt-file /tmp/AGENTS.md
 
       - name: Run Claude Code (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -174,4 +174,4 @@ jobs:
             --fallback-model claude-sonnet-4-6
             --max-turns 100
             --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Task" "WebSearch" "WebFetch" "BashOutput" "KillShell" "Bash(pnpm:*)" "Bash(npx:*)" "Bash(node:*)" "Bash(git:*)" "Bash(gh:*)" "Bash(yq:*)" "Bash(jq:*)" "Bash(grep:*)" "Bash(rg:*)" "Bash(sed:*)" "Bash(awk:*)" "Bash(cut:*)" "Bash(tr:*)" "Bash(sort:*)" "Bash(uniq:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(wc:*)" "Bash(find:*)" "Bash(xargs:*)" "Bash(ls:*)" "Bash(tree:*)" "Bash(mkdir:*)" "Bash(touch:*)" "Bash(cp:*)" "Bash(mv:*)" "Bash(rm:*)" "Bash(tee:*)" "Bash(echo:*)"
-            --append-system-prompt-file AGENTS.md
+            --append-system-prompt-file /tmp/AGENTS.md
