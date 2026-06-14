@@ -60,7 +60,6 @@ jobs:
 
     env:
       DO_NOT_TRACK: "1"
-      TURBOREPO_CACHE: ${{ github.workspace }}/.turbo
 
     permissions:
       contents: write
@@ -146,6 +145,11 @@ jobs:
           REVIEW_BODY: ${{ github.event.review.body || '' }}
           ISSUE_BODY: ${{ github.event.issue.body || '' }}
           PROMPT_INPUT: ${{ github.event.inputs.prompt || '' }}
+
+      - name: Use the latest AGENTS.md
+        run: |
+          git fetch origin main
+          git show origin/main:AGENTS.md > AGENTS.md 2>/dev/null || touch AGENTS.md
 
       - name: Run Claude Code
         if: github.event_name != 'workflow_dispatch'
