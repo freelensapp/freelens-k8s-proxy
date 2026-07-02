@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	xproxy "golang.org/x/net/proxy"
 	apimachineryproxy "k8s.io/apimachinery/pkg/util/proxy"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/transport"
@@ -114,7 +115,12 @@ func (h *upgradePipeHandler) dialUpstream(ctx context.Context, req *http.Request
 
 	var rawConn net.Conn
 	if proxyURL != nil {
-		rawConn, err = dialThroughProxy(ctx, dialer, proxyURL, addr)
+		switch proxyURL.Scheme {
+		case "socks5", "socks5h":
+			rawConn, err = dialThroughSOCKS5(ctx, dialer, proxyURL, addr)
+		default:
+			rawConn, err = dialThroughProxy(ctx, dialer, proxyURL, addr)
+		}
 	} else {
 		rawConn, err = dialer.DialContext(ctx, "tcp", addr)
 	}
@@ -136,6 +142,30 @@ func (h *upgradePipeHandler) dialUpstream(ctx context.Context, req *http.Request
 		return nil, err
 	}
 	return tlsConn, nil
+}
+
+// dialThroughSOCKS5 opens a connection to the upstream through a SOCKS5
+// proxy. The target hostname is sent to the proxy for remote resolution,
+// so upstreams resolvable only from the proxy side (e.g. ssh -D bastions)
+// work.
+func dialThroughSOCKS5(ctx context.Context, dialer *net.Dialer, proxyURL *url.URL, targetAddr string) (net.Conn, error) {
+	u := *proxyURL
+	if u.Port() == "" {
+		u.Host = net.JoinHostPort(u.Hostname(), "1080")
+	}
+	socksDialer, err := xproxy.FromURL(&u, dialer)
+	if err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", u.Host, err)
+	}
+	contextDialer, ok := socksDialer.(xproxy.ContextDialer)
+	if !ok {
+		return nil, fmt.Errorf("socks5 proxy %s: dialer does not support context", u.Host)
+	}
+	conn, err := contextDialer.DialContext(ctx, "tcp", targetAddr)
+	if err != nil {
+		return nil, fmt.Errorf("dial %s via socks5 proxy %s: %w", targetAddr, u.Host, err)
+	}
+	return conn, nil
 }
 
 // dialThroughProxy opens a TCP connection to the HTTP proxy and issues a
