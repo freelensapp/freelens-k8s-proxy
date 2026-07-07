@@ -1,6 +1,6 @@
 module github.com/freelensapp/freelens-k8s-proxy
 
-go 1.26.4
+go 1.26.5
 
 require (
 	golang.org/x/net v0.56.0
