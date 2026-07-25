@@ -1,10 +1,12 @@
 name: Grype Scanner
 
+# No pull_request trigger: the scan is not a required status check, so on a PR
+# it gates nothing, while the snapshot release it builds is the slowest job in
+# the repository. A vulnerability is a property of the published artifacts and
+# of the advisory feed, not of the change under review - main and the nightly
+# schedule are where it has to be caught.
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
   schedule:
@@ -151,7 +153,7 @@ jobs:
           category: grype
 
       - name: Upload vulnerability report
-        if: github.ref_name == 'main' && github.event_name != 'pull_request'
+        if: github.ref_name == 'main'
         uses: actions/upload-artifact@v7
         with:
           name: "${{ github.event.repository.name }}-grype.json"
@@ -162,9 +164,10 @@ jobs:
 
     # Turns the Grype JSON report from the scan job into a markdown table and
     # replaces the tracking discussion's body with it, so the discussion
-    # always reflects the latest main-branch scan. Runs for the real branch
-    # build (push/dispatch on main) only, never for PRs.
-    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+    # always reflects the latest main-branch scan. A workflow_dispatch on
+    # another branch would report that branch as if it were main, hence the
+    # guard.
+    if: github.ref_name == 'main'
 
     needs:
       - scan
