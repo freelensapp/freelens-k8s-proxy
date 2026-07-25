@@ -41,7 +41,7 @@ jobs:
 
       # yq comes from mise so that its version has a single source (mise.toml)
       # and the download is verified against mise.lock.
-      - name: Set up yq
+      - name: Set up mise
         uses: jdx/mise-action@v4
         with:
           version: 2026.7.13 # datasource=github-releases depName=jdx/mise
@@ -138,7 +138,7 @@ jobs:
 
       # yq comes from mise so that its version has a single source (mise.toml)
       # and the download is verified against mise.lock.
-      - name: Set up yq
+      - name: Set up mise
         uses: jdx/mise-action@v4
         with:
           version: 2026.7.13 # datasource=github-releases depName=jdx/mise
