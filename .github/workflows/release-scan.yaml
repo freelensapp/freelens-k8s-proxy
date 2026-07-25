@@ -8,6 +8,12 @@ on:
   # than the release event, because GoReleaser uploads the assets after
   # creating the release - waiting for the whole run is what guarantees the
   # SBOMs are there.
+  #
+  # Not workflow_call from release.yaml, which would put this job in the
+  # release run and read better: a job that calls a reusable workflow accepts
+  # none of continue-on-error, so a scan that fails - an advisory feed that is
+  # down, a rate limit - would mark an otherwise correct release as failed. A
+  # separate run keeps the release conclusion about the release.
   workflow_run:
     workflows:
       - Release
