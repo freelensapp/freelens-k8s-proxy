@@ -1,5 +1,8 @@
 name: Release Scan
 
+# Scans what the last release actually shipped, from the SBOMs published with
+# it. Its counterpart, Main Scan, scans what the main branch currently builds.
+
 on:
   schedule:
     - cron: 38 21 * * *
@@ -137,7 +140,7 @@ jobs:
         if: steps.release.outputs.count != '0'
         run: |
           set -eo pipefail
-          # Same shape as the main-branch report in grype-scanner.yaml, plus a
+          # Same shape as the main-branch report in main-scan.yaml, plus a
           # Platforms column. negrisk is a sort-only helper: yq has no unary
           # minus, so descending-by-risk needs the value pre-negated.
           total=$(yq -pj -oj '.platforms | length' grype.json)

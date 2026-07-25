@@ -1,5 +1,9 @@
-name: Grype Scanner
+name: Main Scan
 
+# Scans what the main branch currently builds. Its counterpart, Release Scan,
+# scans what the last release actually shipped - same report, different
+# subject, hence two workflows rather than one with a branch in it.
+#
 # No pull_request trigger: the scan is not a required status check, so on a PR
 # it gates nothing, while the snapshot release it builds is the slowest job in
 # the repository. A vulnerability is a property of the published artifacts and
@@ -18,7 +22,7 @@ permissions:
 
 jobs:
   scan:
-    name: Grype scan
+    name: Scan the main branch
 
     runs-on: ubuntu-24.04-arm
 
@@ -72,7 +76,7 @@ jobs:
       - name: Build the release artifacts and their SBOMs
         run: goreleaser release --snapshot --clean --skip=publish
 
-      # json is produced alongside sarif because post-scan-report needs fields
+      # json is produced alongside sarif because the report job needs fields
       # sarif does not carry: component type, installed/fixed-in versions and
       # risk score. Scanning the SBOM rather than the binary is not cosmetic:
       # on the same go1.26.4 build `grype file:` reported 1 finding where the
@@ -159,8 +163,8 @@ jobs:
           name: "${{ github.event.repository.name }}-grype.json"
           path: grype.json
 
-  post-scan-report:
-    name: post scan report to discussion
+  report:
+    name: Report to discussion
 
     # Turns the Grype JSON report from the scan job into a markdown table and
     # replaces the tracking discussion's body with it, so the discussion
