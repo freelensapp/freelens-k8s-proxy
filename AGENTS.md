@@ -96,7 +96,8 @@ freelens-k8s-proxy/
 ├── .goreleaser.yaml     # Release build config
 ├── .trunk/              # Trunk linter configuration
 ├── .go-version          # Go version (used by mise)
-├── mise.toml            # Additional mise tools (goreleaser)
+├── mise.lock            # Pinned tool versions and checksums for all platforms
+├── mise.toml            # Additional mise tools (goreleaser, yq)
 └── .github/             # CI workflows
 ```
 

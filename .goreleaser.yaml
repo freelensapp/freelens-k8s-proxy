@@ -28,9 +28,27 @@ archives:
       - binary
 
 checksum:
-  name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}.sha256"
+  # SBOM artifacts have no Os/Arch, so the plain ProjectName-Os-Arch template
+  # would give all of them the same name ("freelens-k8s-proxy--.sha256") and
+  # they would overwrite each other. Fall back to the artifact name for those;
+  # the binaries keep the names they have always had.
+  name_template: "{{ if .Os }}{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}{{ else }}{{ .ArtifactName }}{{ end }}.sha256"
   algorithm: sha256
   split: true
+
+sboms:
+  # "archive" would match nothing: with formats [binary] there is no
+  # UploadableArchive artifact and GoReleaser would silently log "no artifacts
+  # matching current filters". The args are spelled out because the default
+  # ones add "--enrich all", which makes syft query external registries during
+  # the release.
+  - artifacts: binary
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+    args:
+      - $artifact
+      - --output
+      - spdx-json=$document
 
 changelog:
   use: github

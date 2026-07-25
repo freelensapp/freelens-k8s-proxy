@@ -34,6 +34,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # yq comes from mise so that its version has a single source (mise.toml)
+      # and the download is verified against mise.lock.
+      - name: Set up yq
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: yq
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
       - name: Install Grype
         id: grype
         uses: anchore/scan-action/download-grype@v7
@@ -41,15 +57,43 @@ jobs:
           grype-version: ${{ env.GRYPE_VERSION }}
           cache-db: true
 
-      # A single Go binary has one dependency set regardless of target
-      # OS/arch, so scanning go.mod/go.sum directly (no build, no per-arch
-      # matrix) is enough to catch all vulnerable modules. json is produced
-      # alongside sarif because post-scan-report needs fields sarif does not
-      # carry: component type, installed/fixed-in versions and risk score.
-      - name: Scan source with Grype
+      # What is published - the SBOM and the vulnerability report - describes
+      # the released binary, so the scan starts from one. A single Go binary
+      # has the same dependency set regardless of target OS/arch, and grype
+      # matches the stdlib on its recorded version rather than on GOOS, so
+      # building one target is enough - no per-arch matrix.
+      - name: Build binary
+        run: go build -trimpath -o freelens-k8s-proxy .
+        env:
+          CGO_ENABLED: "0"
+
+      # The same syft invocation as the sboms section of .goreleaser.yaml, so
+      # that what is scanned here is what ships with the release.
+      - name: Create SBOM
+        run: syft freelens-k8s-proxy --output spdx-json=freelens-k8s-proxy.sbom.json
+
+      # Scanning the SBOM instead of the binary is not cosmetic: on the same
+      # go1.26.4 build `grype file:` reported 1 finding where the SBOM
+      # reported 3, silently dropping a module CVE and a stdlib advisory. The
+      # published SPDX and syft's own json give identical results, so the file
+      # users receive is the one that gets scanned. json is produced alongside
+      # sarif because post-scan-report needs fields sarif does not carry:
+      # component type, installed/fixed-in versions and risk score.
+      - name: Scan SBOM with Grype
         run: |
           set -eo pipefail
-          "${{ steps.grype.outputs.cmd }}" dir:. -o sarif=grype.sarif -o json=grype.json
+          "${{ steps.grype.outputs.cmd }}" sbom:freelens-k8s-proxy.sbom.json -o sarif=grype.sarif -o json=grype.json
+
+      # Grype points the findings at the artifact recorded in the SBOM, a path
+      # that does not exist in the repository, so code scanning cannot map an
+      # alert to a source file. go.mod is where both stdlib and module
+      # findings are actually fixed.
+      - name: Repoint SARIF findings at go.mod
+        run: |
+          set -eo pipefail
+          yq -pj -oj '(.runs[].results[].locations[].physicalLocation.artifactLocation.uri) = "go.mod"' \
+            grype.sarif > grype.sarif.tmp
+          mv grype.sarif.tmp grype.sarif
 
       - name: Upload Grype SARIF to code scanning
         uses: github/codeql-action/upload-sarif@v4
@@ -80,12 +124,26 @@ jobs:
 
     permissions:
       actions: read
+      contents: read
       discussions: write
 
     env:
       DISCUSSION_NUMBER: 179
 
     steps:
+      # Only needed for mise.toml and mise.lock: this job builds the table
+      # with yq and nothing else here reads the working tree.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # yq comes from mise so that its version has a single source (mise.toml)
+      # and the download is verified against mise.lock.
+      - name: Set up yq
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: yq
+
       - name: Download vulnerability report
         uses: actions/download-artifact@v8
         with:
@@ -111,7 +169,6 @@ jobs:
                   "installed": .artifact.version,
                   "fixed": ((.vulnerability.fix.versions // []) | join(", ")),
                   "advisory": ("[" + .vulnerability.id + "](" + (.vulnerability.dataSource // "") + ")"),
-                  "location": (.artifact.locations[0].path // ""),
                   "rank": ($rank[.vulnerability.severity] // 9),
                   "negrisk": (0 - (.vulnerability.risk // 0))
                 }
@@ -121,18 +178,18 @@ jobs:
           ' grype.json > rows.json
           count=$(yq -pj -oj 'length' rows.json)
           {
-            echo "Grype vulnerability scan for [\`${GITHUB_SHA:0:12}\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA), updated $(date -u +'%Y-%m-%d %H:%M UTC') by [this run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+            echo "Vulnerabilities in the binary built from [\`${GITHUB_SHA:0:12}\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA), scanned through the same SBOM that ships with a release. Updated $(date -u +'%Y-%m-%d %H:%M UTC') by [this run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
             echo
             if [[ "$count" -eq 0 ]]; then
               echo "No vulnerabilities found."
             else
-              echo "| Severity | Risk | Package | Type | Installed | Fixed In | Advisory | Location |"
-              echo "| --- | --- | --- | --- | --- | --- | --- | --- |"
+              echo "| Severity | Risk | Package | Type | Installed | Fixed In | Advisory |"
+              echo "| --- | --- | --- | --- | --- | --- | --- |"
               # LC_ALL=C: printf "%.1f" must use a period regardless of the
               # runner's locale, or it silently truncates "6.6" to "6" (parsed
               # up to the first non-digit) and re-renders it as "6,0".
               yq -pj -ot rows.json | tail -n +2 |
-                LC_ALL=C awk -F'\t' '{printf "| %s | %.1f | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7, $8}'
+                LC_ALL=C awk -F'\t' '{printf "| %s | %.1f | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7}'
             fi
           } > body.md
           echo "vulnerabilities: $count"

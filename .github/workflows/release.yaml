@@ -7,6 +7,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
+  attestations: write
   contents: write
   id-token: write
 
@@ -30,10 +31,41 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
+      # GoReleaser and yq come from mise so that their versions have a single
+      # source (mise.toml) and the downloads are verified against mise.lock.
+      - name: Set up GoReleaser and yq
+        uses: jdx/mise-action@v4
         with:
-          version: 2.17.0 # datasource=github-releases depName=goreleaser/goreleaser
-          args: release --clean
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: goreleaser yq
+
+      # Required by the sboms section of .goreleaser.yaml.
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Run GoReleaser
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect attestation subjects
+        run: |
+          set -eo pipefail
+          # checksum.split gives one .sha256 per artifact, each holding a bare
+          # digest, so there is no combined checksums file to attest. Rebuild
+          # one from the GoReleaser metadata instead: the uploadable binaries
+          # (the only Binary artifacts with extra.Format) and the SBOMs, named
+          # exactly as they are published, which is what users pass to
+          # `gh attestation verify`.
+          yq -pj -oy '
+            .[]
+            | select(.type == "SBOM" or (.type == "Binary" and .extra.Format == "binary"))
+            | (.extra.Checksum | sub("^sha256:"; "")) + "  " + .name
+          ' dist/artifacts.json > attestation-checksums.txt
+          cat attestation-checksums.txt
+          test -s attestation-checksums.txt
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-checksums: attestation-checksums.txt

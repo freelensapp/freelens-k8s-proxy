@@ -28,6 +28,20 @@ winget install goreleaser.goreleaser
 ./Makefile.ps1 build
 ```
 
+## How to verify a release
+
+Every released binary is published with an SPDX SBOM
+(`<binary>.sbom.json`) and a build provenance attestation. Both the binaries
+and the SBOMs can be verified with the GitHub CLI:
+
+```sh
+gh attestation verify freelens-k8s-proxy-linux-amd64 --repo freelensapp/freelens-k8s-proxy
+```
+
+Note that `gh attestation verify` prints its result only on a terminal: in CI
+or when its output is piped it reports through the exit status alone. Use
+`--format json` when a script needs the details.
+
 ## License
 
 This repository is a fork of [lens-k8s-proxy](https://github.com/lensapp/lens-k8s-proxy/tree/main).
