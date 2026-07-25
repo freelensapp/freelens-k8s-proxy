@@ -25,18 +25,6 @@
     ],
     "automerge": true
   },
-  "packageRules": [
-    // goreleaser is tracked both in mise.toml (depName "goreleaser") and in
-    // the workflow files (depName "goreleaser/goreleaser"); group them so a
-    // version bump lands in a single PR instead of two
-    {
-      "matchDepNames": [
-        "goreleaser",
-        "goreleaser/goreleaser"
-      ],
-      "groupName": "goreleaser"
-    }
-  ],
   "constraints": {
     // allow minor updates for go
     "go": ">= 1.23"

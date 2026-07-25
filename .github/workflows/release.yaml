@@ -31,15 +31,20 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # GoReleaser comes from mise so that its version has a single source
+      # (mise.toml) and the download is verified against mise.lock.
+      - name: Set up GoReleaser
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: goreleaser
+
       # Required by the sboms section of .goreleaser.yaml.
       - name: Install Syft
         uses: anchore/sbom-action/download-syft@v0
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          version: 2.17.0 # datasource=github-releases depName=goreleaser/goreleaser
-          args: release --clean
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
