@@ -24,6 +24,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # mise-action adds --locked on its own when a lockfile is present, so
+      # this downloads every tool and verifies it against the recorded
+      # checksums. It covers the runner platform only; the diff check below
+      # covers the rest. It also puts the pinned yq on PATH for that check.
+      - name: Install tools from mise.lock
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+
       # Lock file maintenance PRs are automerged and nobody reads their diff,
       # so the one thing a human could have spotted there is checked here: a
       # checksum that changed while its tool version did not, which means the
@@ -33,18 +42,26 @@ jobs:
       - name: Check for replaced artifacts
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
+        run: |-
           set -eo pipefail
 
+          # toml is spelled out because it has no single-letter alias; -ot is
+          # tsv, whose header row is what tail drops.
           flatten() {
-            yq -p toml -o json '.' "$1" | jq -r '
-              .tools // {} | to_entries[] as $tool
-              | $tool.value[] as $entry
-              | $entry | to_entries[]
-              | select(.key | startswith("platforms."))
-              | [$tool.key, $entry.version, (.key | sub("^platforms\\."; "")), .value.checksum]
-              | @tsv
-            ' | sort
+            yq -ptoml -ot '
+              [
+                (.tools // {}) | to_entries[] as $tool
+                | $tool.value[] as $entry
+                | $entry | to_entries[]
+                | select(.key | test("^platforms\\."))
+                | {
+                    "tool": $tool.key,
+                    "version": $entry.version,
+                    "platform": (.key | sub("^platforms\\."; "")),
+                    "checksum": .value.checksum
+                  }
+              ]
+            ' "$1" | tail -n +2 | sort
           }
 
           if ! git show "$BASE_SHA:mise.lock" > base.lock 2> /dev/null; then
@@ -69,12 +86,3 @@ jobs:
 
           echo "Checksum changed without a version change - the artifact behind a pinned URL was replaced." >&2
           exit 1
-
-      # mise-action adds --locked on its own when a lockfile is present, so
-      # this downloads every tool and verifies it against the recorded
-      # checksums. It covers the runner platform only; the diff check above
-      # covers the rest.
-      - name: Install tools from mise.lock
-        uses: jdx/mise-action@v4
-        with:
-          version: 2026.7.13 # datasource=github-releases depName=jdx/mise

@@ -39,6 +39,14 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # yq comes from mise so that its version has a single source (mise.toml)
+      # and the download is verified against mise.lock.
+      - name: Set up yq
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: yq
+
       - name: Install Grype
         id: grype
         uses: anchore/scan-action/download-grype@v7
@@ -112,17 +120,22 @@ jobs:
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
           set -eo pipefail
-          jq -s '
-            def key: [.vulnerability.id, .artifact.name, .artifact.version];
-            (.[0].matches // []) as $source
-            | ($source | map(key)) as $seen
+          yq -pj -oj '
+            (.matches // []) as $source
+            | ($source | map(.vulnerability.id + "|" + .artifact.name + "|" + .artifact.version)) as $seen
             | {
-                matches: (
+                "matches": (
                   $source
-                  + ((.[1].matches // []) | map(select((key | IN($seen[])) | not)))
+                  + (
+                      (load("grype-binary.json").matches // [])
+                      | map(select(
+                          (.vulnerability.id + "|" + .artifact.name + "|" + .artifact.version) as $key
+                          | $seen | any_c(. == $key) | not
+                        ))
+                    )
                 )
               }
-          ' grype-source.json grype-binary.json > grype.json
+          ' grype-source.json > grype.json
 
       - name: Upload vulnerability report
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
@@ -147,12 +160,26 @@ jobs:
 
     permissions:
       actions: read
+      contents: read
       discussions: write
 
     env:
       DISCUSSION_NUMBER: 179
 
     steps:
+      # Only needed for mise.toml and mise.lock: this job builds the table
+      # with yq and nothing else here reads the working tree.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # yq comes from mise so that its version has a single source (mise.toml)
+      # and the download is verified against mise.lock.
+      - name: Set up yq
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: yq
+
       - name: Download vulnerability report
         uses: actions/download-artifact@v8
         with:

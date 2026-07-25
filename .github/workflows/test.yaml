@@ -44,13 +44,13 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # GoReleaser comes from mise so that its version has a single source
-      # (mise.toml) and the download is verified against mise.lock.
-      - name: Set up GoReleaser
+      # GoReleaser and yq come from mise so that their versions have a single
+      # source (mise.toml) and the downloads are verified against mise.lock.
+      - name: Set up GoReleaser and yq
         uses: jdx/mise-action@v4
         with:
           version: 2026.7.13 # datasource=github-releases depName=jdx/mise
-          install_args: goreleaser
+          install_args: goreleaser yq
 
       - name: Run GoReleaser
         run: goreleaser build --clean --snapshot --single-target --output freelens-k8s-proxy
@@ -74,4 +74,4 @@ jobs:
       - name: Test the output
         run: |-
           url=http://$(grep ^starting freelens-k8s-proxy.log | sed 's/.* //')/version
-          curl -fsS $url | jq -ce . | grep platform
+          curl -fsS $url | yq -pj -oj -I0 -e '.' | grep platform
