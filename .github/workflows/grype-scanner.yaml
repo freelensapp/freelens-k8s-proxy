@@ -34,6 +34,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - name: Install Grype
         id: grype
         uses: anchore/scan-action/download-grype@v7
@@ -41,21 +46,83 @@ jobs:
           grype-version: ${{ env.GRYPE_VERSION }}
           cache-db: true
 
-      # A single Go binary has one dependency set regardless of target
-      # OS/arch, so scanning go.mod/go.sum directly (no build, no per-arch
-      # matrix) is enough to catch all vulnerable modules. json is produced
-      # alongside sarif because post-scan-report needs fields sarif does not
-      # carry: component type, installed/fixed-in versions and risk score.
+      # The source scan catalogues the Go modules from go.mod/go.sum and the
+      # actions pinned in the workflow files; the binary scan below cannot see
+      # the latter. json is produced alongside sarif because post-scan-report
+      # needs fields sarif does not carry: component type, installed/fixed-in
+      # versions and risk score.
       - name: Scan source with Grype
         run: |
           set -eo pipefail
-          "${{ steps.grype.outputs.cmd }}" dir:. -o sarif=grype.sarif -o json=grype.json
+          "${{ steps.grype.outputs.cmd }}" dir:. -o sarif=grype-source.sarif -o json=grype-source.json
 
-      - name: Upload Grype SARIF to code scanning
+      # A source scan never sees the Go stdlib: the toolchain version is
+      # recorded in the compiled binary alone, so stdlib vulnerabilities
+      # (net/http, crypto/x509, archive/*) stay invisible to `grype dir:.`. A
+      # single Go binary has one dependency set regardless of target OS/arch,
+      # so building one target is enough - no per-arch matrix.
+      - name: Build binary
+        run: go build -trimpath -o freelens-k8s-proxy .
+        env:
+          CGO_ENABLED: "0"
+
+      - name: Scan binary with Grype
+        run: |
+          set -eo pipefail
+          "${{ steps.grype.outputs.cmd }}" file:freelens-k8s-proxy -o sarif=grype-binary.sarif -o json=grype-binary.json
+        env:
+          # Grype 0.116 does match the stdlib through govulndb on its own;
+          # what this flag adds are the NVD records, which are not all
+          # reachable from a GO-* advisory. Measured on a go1.26.3 binary:
+          # 3 matches without it, 8 with it - three of the extra ones only
+          # restate a GO-* advisory under its CVE id (they carry it as a
+          # related vulnerability), but the remaining two are High severity
+          # and appear nowhere in the govulndb results.
+          GRYPE_MATCH_GOLANG_ALWAYS_USE_CPE_FOR_STDLIB: "true"
+
+      # Grype points the binary findings at the scanned file
+      # (/freelens-k8s-proxy), an absolute path that does not exist in the
+      # repository, so code scanning cannot map an alert to a source file.
+      # go.mod is where both stdlib and module findings are actually fixed.
+      - name: Repoint SARIF findings at go.mod
+        run: |
+          set -eo pipefail
+          yq -pj -oj '(.runs[].results[].locations[].physicalLocation.artifactLocation.uri) = "go.mod"' \
+            grype-binary.sarif > grype-binary.sarif.tmp
+          mv grype-binary.sarif.tmp grype-binary.sarif
+
+      - name: Upload source Grype SARIF to code scanning
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: grype.sarif
+          sarif_file: grype-source.sarif
           category: grype
+
+      - name: Upload binary Grype SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: grype-binary.sarif
+          category: grype-binary
+
+      # Both scans catalogue the Go modules, so a module match appears in both
+      # reports. The source report is kept as it is and only the matches the
+      # binary scan adds on top of it - the stdlib ones - are appended, so
+      # findings that legitimately repeat within a single scan (the same
+      # action pinned in several workflows) are not collapsed.
+      - name: Merge vulnerability reports
+        if: github.ref_name == 'main' && github.event_name != 'pull_request'
+        run: |
+          set -eo pipefail
+          jq -s '
+            def key: [.vulnerability.id, .artifact.name, .artifact.version];
+            (.[0].matches // []) as $source
+            | ($source | map(key)) as $seen
+            | {
+                matches: (
+                  $source
+                  + ((.[1].matches // []) | map(select((key | IN($seen[])) | not)))
+                )
+              }
+          ' grype-source.json grype-binary.json > grype.json
 
       - name: Upload vulnerability report
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
