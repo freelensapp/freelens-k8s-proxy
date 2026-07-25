@@ -10,6 +10,21 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
+  // Renovate's mise manager sees only mise.toml, i.e. just goreleaser; the Go
+  // version comes from .go-version through a regex custom manager and regex
+  // managers never touch lockfiles. So after every .go-version bump the "go"
+  // entries in mise.lock go stale, and the next local `mise install` re-locks
+  // only the current platform, silently dropping the other seven. Lock file
+  // maintenance runs plain `mise lock`, which relocks every tool on every
+  // platform already present in the file. Defaults are disabled and weekly,
+  // hence the explicit settings.
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "at any time"
+    ],
+    "automerge": true
+  },
   "packageRules": [
     // goreleaser is tracked both in mise.toml (depName "goreleaser") and in
     // the workflow files (depName "goreleaser/goreleaser"); group them so a
