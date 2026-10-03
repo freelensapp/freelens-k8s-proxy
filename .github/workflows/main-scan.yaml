@@ -24,7 +24,7 @@ jobs:
   scan:
     name: Scan the main branch
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     permissions:
       actions: read
@@ -176,7 +176,7 @@ jobs:
     needs:
       - scan
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     permissions:
       actions: read
