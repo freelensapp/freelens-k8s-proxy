@@ -1,0 +1,67 @@
+name: Automated mise lock
+
+# Renovate bumps Go in .go-version and go.mod through regex custom managers,
+# which never touch lockfiles, so its Go update PRs come with a stale
+# mise.lock and fail the Mise Lock Check. Lock file maintenance cannot help
+# there: it works only on the base branch. This relocks the PR branch itself.
+on:
+  push:
+    branches:
+      - renovate/go-*
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mise-lock:
+    name: mise lock
+
+    runs-on: ubuntu-26.04-arm
+    environment: automated
+
+    steps:
+      # GH_TOKEN rather than GITHUB_TOKEN, so that the pushed commit triggers
+      # the Mise Lock Check on the PR again.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      # The tools are not installed: mise-action would add --locked, which is
+      # exactly what fails on a stale lockfile.
+      - name: Set up mise
+        uses: jdx/mise-action@v5
+        with:
+          version: 2026.10.0 # datasource=github-releases depName=jdx/mise
+          install: false
+
+      # Relocks every tool on every platform already present in the file and
+      # prunes the entries of the previous Go version.
+      - name: Mise lock
+        run: mise lock
+
+      - name: Check for changes
+        run: |
+          if git diff --exit-code; then
+            echo "changes=false" >> $GITHUB_ENV
+          else
+            echo "changes=true" >> $GITHUB_ENV
+          fi
+
+      # The author is listed in gitIgnoredAuthors in .renovaterc.json5, so
+      # Renovate keeps treating the branch as unmodified and still rebases and
+      # updates it. A rebase drops this commit, and the push it makes runs
+      # this workflow again.
+      - name: Commit and push to branch
+        if: env.changes == 'true'
+        uses: EndBug/add-and-commit@v11
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          default_author: github_actions
+          add: mise.lock
+          message: Automated mise lock
+          fetch: false

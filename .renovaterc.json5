@@ -10,11 +10,19 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
+  // The mise-lock-renovate.yaml workflow commits to Renovate's Go update
+  // branches. Without this, Renovate would see the branch as modified by
+  // someone else and stop rebasing and updating it.
+  "gitIgnoredAuthors": [
+    "41898282+github-actions[bot]@users.noreply.github.com"
+  ],
   // Renovate's mise manager sees only mise.toml, i.e. just goreleaser; the Go
   // version comes from .go-version through a regex custom manager and regex
-  // managers never touch lockfiles. So after every .go-version bump the "go"
-  // entries in mise.lock go stale, and the next local `mise install` re-locks
-  // only the current platform, silently dropping the other seven. Lock file
+  // managers never touch lockfiles. So a .go-version bump leaves the "go"
+  // entries in mise.lock stale, and the next local `mise install` re-locks
+  // only the current platform, silently dropping the other seven. The Go
+  // update PR itself is relocked by the mise-lock-renovate.yaml workflow,
+  // because lock file maintenance works only on the base branch. Lock file
   // maintenance runs plain `mise lock`, which relocks every tool on every
   // platform already present in the file. Defaults are disabled and weekly,
   // hence the explicit settings.
