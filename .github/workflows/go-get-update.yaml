@@ -62,7 +62,12 @@ jobs:
 
       - name: Go get update
         run: |
-          go get -u 2>&1 | tee .github/update.log
+          # kube-openapi has no releases and moves in lockstep with the k8s.io
+          # modules, which pin one of its commits; its master can already need
+          # what the pinned k8s.io release does not build with. Hold it at the
+          # version the k8s.io modules select, so only a k8s bump moves it.
+          KUBE_OPENAPI=$(go list -m -f '{{.Version}}' k8s.io/kube-openapi)
+          go get -u . "k8s.io/kube-openapi@$KUBE_OPENAPI" 2>&1 | tee .github/update.log
           if [[ -s .github/update.log ]]; then
             go mod tidy -v 2>&1 | tee -a .github/update.log
           fi
