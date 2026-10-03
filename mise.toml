@@ -3,5 +3,9 @@ goreleaser = "2.18.2"
 yq = "4.54.1"
 
 [settings]
+# Go comes from .go-version, which editors read too. go.mod is disabled as a
+# version source: its `go` directive is only a minimum (mise deprecates reading
+# it), and a `toolchain` line equal to it is dropped by `go mod tidy`.
 idiomatic_version_file_enable_tools = ["go"]
+idiomatic_version_file_disable_files = ["go:go.mod"]
 lockfile = true
