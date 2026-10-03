@@ -224,7 +224,9 @@ the listener before exiting.
 ## GitHub Actions (Claude Code Action) Rules
 
 When operating via the `claude.yaml` workflow (i.e., invoked from a PR
-comment, issue, or review), follow these rules:
+comment, issue, or review), follow these rules. The workflow runs only for
+users with write access to the repository (the admin, maintain or write
+role); the first step of the run checks the permission.
 
 ### Code Review
 
@@ -307,3 +309,43 @@ claude/issue-<number>-<short-slug>
 - `<number>` is the GitHub issue number
 - `<short-slug>` is a kebab-case summary of the issue title, kept short
   (3–6 words maximum, omit articles and filler words)
+
+### Pull Requests from Forks
+
+The `origin` remote is always `freelensapp/freelens-k8s-proxy`, for fork PRs
+too: their commits are checked out through the pull ref.
+
+A PR from a fork runs in review mode, because its code is untrusted and the
+job holds write tokens. Go and trunk are not set up, and the tools that
+execute the repository's code (`go`, `make`, `goreleaser`, `gofmt`, `trunk`)
+are not available, so review the code and edit files by reading them, and say
+that no check ran. A branch moved to `origin` as the next section describes
+is a same-repository PR from then on, and later runs on it get the full setup
+and execute its code; the maintainer who asks for the move vouches for that
+code.
+
+### Pushing Changes from Fork PRs
+
+When you have commits ready to push but the PR originates from a fork
+(different owner than `freelensapp`), you cannot push to the fork's
+repository. Instead:
+
+1. Create a new branch on `freelensapp/freelens-k8s-proxy` with the prefix
+   `claude/` followed by the original branch name, and push it to `origin`:
+
+   ```bash
+   git checkout -b claude/<original-branch-name>
+   git push --force-with-lease origin claude/<original-branch-name>
+   ```
+
+2. Open a new PR from that branch. The new PR MUST use the **exact same
+   title** as the original PR — copy it verbatim, do not rewrite, improve,
+   or add any prefix. The description MUST reference the original PR
+   (e.g. "Fixes #NNN, supersedes #NNN").
+
+3. Post a comment on the original PR:
+   - Explain that the fix has been implemented in a new PR
+   - Include a link to the new PR
+   - Mention that the original PR can be closed
+
+4. Close the original PR.
