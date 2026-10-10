@@ -3,7 +3,7 @@ module github.com/freelensapp/freelens-k8s-proxy
 go 1.27.2
 
 require (
-	golang.org/x/net v0.60.0
+	golang.org/x/net v0.61.0
 	k8s.io/apimachinery v0.37.1
 	k8s.io/cli-runtime v0.37.1
 	k8s.io/client-go v0.37.1
