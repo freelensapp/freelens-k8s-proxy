@@ -3,7 +3,7 @@ module github.com/freelensapp/freelens-k8s-proxy
 go 1.27.2
 
 require (
-	golang.org/x/net v0.60.0
+	golang.org/x/net v0.61.0
 	k8s.io/apimachinery v0.37.1
 	k8s.io/cli-runtime v0.37.1
 	k8s.io/client-go v0.37.1
@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/Azure/go-ansiterm v0.0.0-20261008234032-65faa4be4f89 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20261013165250-51075c6ea6bc // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.14.0 // indirect
