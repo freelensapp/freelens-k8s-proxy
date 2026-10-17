@@ -325,10 +325,10 @@ The `origin` remote is always `freelensapp/freelens-k8s-proxy`, for fork PRs
 too: their commits are checked out through the pull ref.
 
 A PR from a fork runs in review mode, because its code is untrusted and the
-job holds write tokens. Go and trunk are not set up, and the tools that
-execute the repository's code (`go`, `make`, `goreleaser`, `gofmt`, `trunk`),
-edit files or commit and push are not available. Review the code by reading
-it, and say that no check ran. See "Fork PRs: Review Only" for how a fork PR
+job holds write tokens. Go, mise and trunk are not set up, and the tools that
+execute the repository's code (`go`, `make`, `goreleaser`, `gofmt`, `mise`,
+`trunk`), edit files or commit and push are not available. Review the code by
+reading it, and say that no check ran. See "Fork PRs: Review Only" for how a fork PR
 that needs changes is handled.
 
 ### Fork PRs: Review Only
