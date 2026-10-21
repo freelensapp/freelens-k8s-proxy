@@ -16,6 +16,9 @@ jobs:
   tag-semver:
     name: tag semver
 
+    # Never on a fork: it has no GH_TOKEN secret, so the job could only fail.
+    if: github.repository_owner == 'freelensapp'
+
     runs-on: ubuntu-26.04-arm
     environment: automated
 

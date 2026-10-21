@@ -172,8 +172,9 @@ jobs:
     # replaces the tracking discussion's body with it, so the discussion
     # always reflects the latest main-branch scan. A workflow_dispatch on
     # another branch would report that branch as if it were main, hence the
-    # guard.
-    if: github.ref_name == 'main'
+    # guard. Never on a fork either: it has no GH_TOKEN secret and no
+    # discussion.
+    if: github.repository_owner == 'freelensapp' && github.ref_name == 'main'
 
     needs:
       - scan
