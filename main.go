@@ -106,7 +106,12 @@ func main() {
 
 	fmt.Printf("starting to serve on %s\n", l.Addr().String())
 
-	httpServer := &http.Server{Handler: mux}
+	httpServer := &http.Server{
+		Handler: mux,
+		// Go allows 250 concurrent streams by default, and every watch holds
+		// one for hours. Match the limit the Freelens proxy gives the renderer.
+		HTTP2: &http.HTTP2Config{MaxConcurrentStreams: 1000},
+	}
 
 	go func() {
 		err := httpServer.Serve(l)
@@ -139,8 +144,12 @@ func getListener(proxyCert string, proxyKey string) (net.Listener, error) {
 
 	return tls.Listen("tcp", proxyAddr, &tls.Config{
 		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS12, // Set the minimum version of TLS to 1.2
-		MaxVersion:   tls.VersionTLS13, // Set the maximum version of TLS to 1.3
+		// Offer HTTP/2 through ALPN. A client that sends no ALPN, as the
+		// current Freelens does, and upgrades (exec, attach, port-forward),
+		// which need a hijackable HTTP/1.1 connection, stay on HTTP/1.1.
+		NextProtos: []string{"h2", "http/1.1"},
+		MinVersion: tls.VersionTLS12, // Set the minimum version of TLS to 1.2
+		MaxVersion: tls.VersionTLS13, // Set the maximum version of TLS to 1.3
 		CipherSuites: []uint16{
 			tls.TLS_AES_256_GCM_SHA384,
 			tls.TLS_CHACHA20_POLY1305_SHA256,
