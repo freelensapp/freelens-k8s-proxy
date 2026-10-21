@@ -187,6 +187,13 @@ The project uses:
 - `markdownlint` — Markdown linting
 - `yamllint` / `yamlfmt` — YAML validation and formatting
 
+actionlint is the one of the maintained fork kjanat/actionlint, whose
+releases continue those of rhysd/actionlint after 1.7.12 and know the new
+GitHub-hosted runner labels. In `.trunk/trunk.yaml`, the `actionlint-kjanat`
+entry of `downloads` points at the fork's release files, which have the same
+names, and the `actionlint` tool definition downloads from it. Renovate
+follows the fork's releases through the hint next to `actionlint@` there.
+
 ## Architecture Decisions
 
 ### Single Binary
