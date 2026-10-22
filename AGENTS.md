@@ -268,8 +268,8 @@ making it compatible with tooling that parses Kubernetes version information:
 ### TLS Support
 
 Optional TLS is configured via `FREELENS_PROXY_CERT` and `FREELENS_PROXY_KEY`
-environment variables. When both are set, the proxy listens with TLS 1.2+ and a curated
-set of cipher suites. When absent, it listens on plain HTTP.
+environment variables. When both are set, the proxy listens with TLS 1.2+ and
+a curated set of cipher suites. When absent, it listens on plain HTTP.
 
 ### Signal Handling
 
