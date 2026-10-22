@@ -15,6 +15,7 @@ generates.
 - **`main.go`** — Entry point; the root, `proxy` and `version` commands
 - **`credential.go`** — The `credential` subcommand
 - **`credential_test.go`** — Tests of the `credential` subcommand
+- **`proxy_test.go`** — Tests of the `proxy` subcommand
 - **`upgrade_proxy.go`** — Proxying of upgrade requests (exec, attach,
   port-forward)
 - **`go.mod`** / **`go.sum`** — Go module dependencies
@@ -69,6 +70,12 @@ make clean             # Remove built binary and dist/
 go test ./...          # Run the tests
 ```
 
+The tests need no cluster: `proxy_test.go` runs the `proxy` subcommand against
+an `httptest` TLS server that stands in for the API server. The end-to-end
+test against KinD runs only in the Test workflow (`.github/workflows/test.yaml`).
+The API server of a test has to serve TLS, because client-go sends the
+credentials of a kubeconfig only to an https server.
+
 ### Build Details
 
 The build uses [goreleaser](https://goreleaser.com/) (configured in
@@ -107,6 +114,7 @@ freelens-k8s-proxy/
 ├── main.go              # Entry point, root, proxy and version commands
 ├── credential.go        # credential subcommand
 ├── credential_test.go   # Tests of the credential subcommand
+├── proxy_test.go        # Tests of the proxy subcommand
 ├── upgrade_proxy.go     # Proxying of upgrade requests
 ├── go.mod               # Go module definition
 ├── go.sum               # Dependency checksums
@@ -170,6 +178,7 @@ explicit path of `ConfigFlags`, which is a single file, so a `KUBECONFIG`
 listing several files would fail with `stat a:b: no such file or directory`.
 Without the flag, client-go reads `KUBECONFIG` itself, merges the files it
 lists, and falls back to `~/.kube/config`, as kubectl does.
+`TestProxyKubeconfigList` guards this.
 
 v1 read `KUBECONFIG_CONTEXT`, `API_PREFIX`, `PROXY_CERT` and `PROXY_KEY`, and
 started the proxy without a subcommand. v2 does neither.
