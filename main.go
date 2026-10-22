@@ -11,9 +11,10 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/proxy"
 )
 
@@ -23,32 +24,95 @@ var (
 	commit  = ""
 )
 
+// Every setting but the kubeconfig, which keeps its standard name, is read
+// from a variable with this prefix.
+const envPrefix = "FREELENS_PROXY"
+
 type VersionData struct {
 	Version string `json:"gitVersion"`
 	Commit  string `json:"gitCommit"`
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
+	if err := newRootCmd().Execute(); err != nil {
+		os.Exit(1)
+	}
+}
 
-	if len(argsWithoutProg) > 0 && argsWithoutProg[0] == "version" {
-		err := json.NewEncoder(os.Stdout).Encode(&VersionData{
-			Version: version,
-			Commit:  commit,
-		})
+func newRootCmd() *cobra.Command {
+	v := viper.New()
+	v.SetEnvPrefix(envPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-		if err != nil {
-			klog.Fatal("failed to marshal version data", err)
-		}
-
-		os.Exit(0)
+	// Without a subcommand the root command prints the help.
+	rootCmd := &cobra.Command{
+		Use:     "freelens-k8s-proxy",
+		Short:   "More secure alternative to kubectl proxy",
+		Version: version,
+		// Usage is for a mistake in the command line, not for a failure of
+		// the command itself.
+		SilenceUsage:      true,
+		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 
-	kubeconfig := os.Getenv("KUBECONFIG")
-	kubeconfigContext := os.Getenv("KUBECONFIG_CONTEXT")
-	apiPrefix := os.Getenv("API_PREFIX")
-	proxyCert := os.Getenv("PROXY_CERT")
-	proxyKey := os.Getenv("PROXY_KEY")
+	rootCmd.AddCommand(newProxyCmd(v), newVersionCmd())
+
+	return rootCmd
+}
+
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print the version as JSON",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := json.NewEncoder(cmd.OutOrStdout()).Encode(&VersionData{
+				Version: version,
+				Commit:  commit,
+			})
+
+			if err != nil {
+				return fmt.Errorf("failed to marshal version data: %w", err)
+			}
+
+			return nil
+		},
+	}
+}
+
+func newProxyCmd(v *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "proxy",
+		Short: "Start the proxy to the Kubernetes API server",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runProxy(v)
+		},
+	}
+
+	cmd.Flags().String("kubeconfig", "", "path to the kubeconfig file (env KUBECONFIG)")
+	cmd.Flags().String("context", "", "name of the kubeconfig context (env FREELENS_PROXY_CONTEXT)")
+	cmd.Flags().String("api-prefix", "", "URL prefix for API requests (env FREELENS_PROXY_API_PREFIX)")
+
+	_ = v.BindPFlags(cmd.Flags())
+	_ = v.BindEnv("kubeconfig", "KUBECONFIG")
+	_ = v.BindEnv("context")
+	_ = v.BindEnv("api-prefix")
+
+	// The TLS certificate and key have no flags: a value on the command line
+	// is visible in ps.
+	_ = v.BindEnv("cert")
+	_ = v.BindEnv("key")
+
+	return cmd
+}
+
+func runProxy(v *viper.Viper) error {
+	kubeconfig := v.GetString("kubeconfig")
+	kubeconfigContext := v.GetString("context")
+	apiPrefix := v.GetString("api-prefix")
+	proxyCert := v.GetString("cert")
+	proxyKey := v.GetString("key")
 
 	if !strings.HasPrefix(apiPrefix, "/") {
 		apiPrefix = "/" + apiPrefix
@@ -74,19 +138,19 @@ func main() {
 	clientConfig, err := config.ToRESTConfig()
 
 	if err != nil {
-		klog.Fatal("failed to initialize kubeconfig", err)
+		return fmt.Errorf("failed to initialize kubeconfig: %w", err)
 	}
 
 	proxyHandler, err := proxy.NewProxyHandler(apiPrefix, nil, clientConfig, 0, true)
 
 	if err != nil {
-		klog.Fatal("failed to initialize proxy handler", err)
+		return fmt.Errorf("failed to initialize proxy handler: %w", err)
 	}
 
 	upgradeHandler, err := newUpgradePipeHandler(apiPrefix, clientConfig)
 
 	if err != nil {
-		klog.Fatal("failed to initialize upgrade pipe handler", err)
+		return fmt.Errorf("failed to initialize upgrade pipe handler: %w", err)
 	}
 
 	mux := http.NewServeMux()
@@ -101,7 +165,7 @@ func main() {
 	l, err := getListener(proxyCert, proxyKey)
 
 	if err != nil {
-		klog.Fatal("failed to get listener", err)
+		return fmt.Errorf("failed to get listener: %w", err)
 	}
 
 	fmt.Printf("starting to serve on %s\n", l.Addr().String())
@@ -113,21 +177,25 @@ func main() {
 		HTTP2: &http.HTTP2Config{MaxConcurrentStreams: 1000},
 	}
 
-	go func() {
-		err := httpServer.Serve(l)
+	serveErr := make(chan error, 1)
 
-		if err != nil && err != http.ErrServerClosed {
-			klog.Fatal(err)
-		}
+	go func() {
+		serveErr <- httpServer.Serve(l)
 	}()
 
-	<-done
+	select {
+	case <-done:
+	case err := <-serveErr:
+		if err != http.ErrServerClosed {
+			return err
+		}
+	}
 
 	fmt.Println("shutting down ...")
 
 	_ = l.Close()
 
-	os.Exit(0)
+	return nil
 }
 
 const proxyAddr = "127.0.0.1:0"
@@ -139,7 +207,7 @@ func getListener(proxyCert string, proxyKey string) (net.Listener, error) {
 
 	cert, err := tls.X509KeyPair([]byte(proxyCert), []byte(proxyKey))
 	if err != nil {
-		klog.Fatal(err)
+		return nil, err
 	}
 
 	return tls.Listen("tcp", proxyAddr, &tls.Config{
