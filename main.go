@@ -95,7 +95,6 @@ func newProxyCmd(v *viper.Viper) *cobra.Command {
 	cmd.Flags().String("api-prefix", "", "URL prefix for API requests (env FREELENS_PROXY_API_PREFIX)")
 
 	_ = v.BindPFlags(cmd.Flags())
-	_ = v.BindEnv("kubeconfig", "KUBECONFIG")
 	_ = v.BindEnv("context")
 	_ = v.BindEnv("api-prefix")
 
@@ -125,11 +124,21 @@ func runProxy(v *viper.Viper) error {
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
 	fmt.Printf("~~ Freelens K8s Proxy, '%s' ~~\n", version)
-	fmt.Printf("kubeconfig: %s\n", kubeconfig)
+	if kubeconfig != "" {
+		fmt.Printf("kubeconfig: %s\n", kubeconfig)
+	} else {
+		fmt.Printf("kubeconfig: %s\n", os.Getenv("KUBECONFIG"))
+	}
 	fmt.Printf("api prefix: %s\n", apiPrefix)
 
 	config := genericclioptions.NewConfigFlags(false)
-	config.KubeConfig = &kubeconfig
+
+	// KUBECONFIG is not read here: an explicit path is a single file, and
+	// without one client-go loads KUBECONFIG, which may list several files,
+	// or ~/.kube/config, as kubectl does.
+	if kubeconfig != "" {
+		config.KubeConfig = &kubeconfig
+	}
 
 	if kubeconfigContext != "" {
 		config.Context = &kubeconfigContext

@@ -165,6 +165,12 @@ from environment variables and flags of the `proxy` subcommand:
 | `FREELENS_PROXY_CERT`       | none           | TLS certificate (PEM)        |
 | `FREELENS_PROXY_KEY`        | none           | TLS private key (PEM)        |
 
+`KUBECONFIG` is not bound in viper on purpose. `--kubeconfig` becomes the
+explicit path of `ConfigFlags`, which is a single file, so a `KUBECONFIG`
+listing several files would fail with `stat a:b: no such file or directory`.
+Without the flag, client-go reads `KUBECONFIG` itself, merges the files it
+lists, and falls back to `~/.kube/config`, as kubectl does.
+
 v1 read `KUBECONFIG_CONTEXT`, `API_PREFIX`, `PROXY_CERT` and `PROXY_KEY`, and
 started the proxy without a subcommand. v2 does neither.
 
@@ -204,7 +210,7 @@ KUBECONFIG=~/.kube/config ./freelens-k8s-proxy proxy
 
 ### Runtime Errors
 
-1. Verify `KUBECONFIG` points to a valid file
+1. Verify `KUBECONFIG` or `--kubeconfig` points to valid files
 2. Check `kubectl cluster-info` works with the same kubeconfig
 3. Ensure TLS certificates are valid if using
    `FREELENS_PROXY_CERT`/`FREELENS_PROXY_KEY`

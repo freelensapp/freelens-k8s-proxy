@@ -36,6 +36,9 @@ flag takes precedence over its variable.
 | `FREELENS_PROXY_KEY`        | none           | TLS private key (PEM)       |
 | `FREELENS_PROXY_TOKEN`      | none           | Token for `credential`      |
 
+`KUBECONFIG` works as for kubectl: it may list several files, and without it
+the proxy reads `~/.kube/config`. `--kubeconfig` names a single file.
+
 Secrets have no flags: a value on the command line is visible in `ps` and,
 for `credential`, would end up in the `args` of the kubeconfig.
 
