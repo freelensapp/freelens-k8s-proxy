@@ -2,14 +2,17 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -583,5 +586,36 @@ func TestUpgradeConnectProxyStalls(t *testing.T) {
 	case <-proxy.closed:
 	case <-time.After(5 * time.Second):
 		t.Fatal("the CONNECT did not end when the request was cancelled")
+	}
+}
+
+func TestDialThroughProxyCanceled(t *testing.T) {
+	proxy := newConnectProxy(t, func(p *connectProxy) { p.stall = true })
+	proxyURL, _ := url.Parse(proxy.url(""))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+
+	go func() {
+		_, err := dialThroughProxy(ctx, &net.Dialer{}, proxyURL, "kubernetes.test:6443")
+		result <- err
+	}()
+
+	select {
+	case <-proxy.connected:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the proxy got no CONNECT")
+	}
+
+	cancel()
+
+	select {
+	case err := <-result:
+		// The cancellation, not the deadline the watcher aborts with.
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("error = %v, want context.Canceled", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the CONNECT did not end when the context was cancelled")
 	}
 }
