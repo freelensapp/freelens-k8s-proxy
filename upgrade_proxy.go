@@ -229,14 +229,14 @@ func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyURL *url.URL
 	}
 	if err := connectReq.Write(conn); err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("write CONNECT to %s: %w", proxyAddr, err)
+		return nil, fmt.Errorf("write CONNECT to %s: %w", proxyAddr, contextErr(ctx, err))
 	}
 
 	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, connectReq)
 	if err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("read CONNECT response from %s: %w", proxyAddr, err)
+		return nil, fmt.Errorf("read CONNECT response from %s: %w", proxyAddr, contextErr(ctx, err))
 	}
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -254,6 +254,16 @@ func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyURL *url.URL
 		return conn, nil
 	}
 	return &bufferedConn{Conn: conn, r: br}, nil
+}
+
+// contextErr reports a canceled request as such. The watcher of the CONNECT
+// handshake aborts it with a deadline, so the error would otherwise read as
+// an i/o timeout of the proxy.
+func contextErr(ctx context.Context, err error) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
+	return err
 }
 
 // bufferedConn glues a bufio.Reader to a net.Conn so leftover bytes parsed

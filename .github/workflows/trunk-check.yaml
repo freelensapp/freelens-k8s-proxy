@@ -1,10 +1,11 @@
 name: Trunk Check
 
 on:
+  # A branch is checked by its pull request, so a push to it would only run
+  # the same check twice.
   push:
-    branches-ignore:
-      - automated/*
-      - renovate/*
+    branches:
+      - main
   pull_request:
     branches:
       - main
