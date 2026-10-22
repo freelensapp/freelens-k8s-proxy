@@ -86,7 +86,7 @@ func newProxyCmd(v *viper.Viper) *cobra.Command {
 		Short: "Start the proxy to the Kubernetes API server",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runProxy(v)
+			return runProxy(cmd, v)
 		},
 	}
 
@@ -106,7 +106,7 @@ func newProxyCmd(v *viper.Viper) *cobra.Command {
 	return cmd
 }
 
-func runProxy(v *viper.Viper) error {
+func runProxy(cmd *cobra.Command, v *viper.Viper) error {
 	kubeconfig := v.GetString("kubeconfig")
 	kubeconfigContext := v.GetString("context")
 	apiPrefix := v.GetString("api-prefix")
@@ -120,16 +120,20 @@ func runProxy(v *viper.Viper) error {
 		apiPrefix += "/"
 	}
 
-	done := make(chan os.Signal, 2)
-	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
+	// The context of the command stops the proxy too, which is how the tests
+	// stop it.
+	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	fmt.Printf("~~ Freelens K8s Proxy, '%s' ~~\n", version)
+	out := cmd.OutOrStdout()
+
+	_, _ = fmt.Fprintf(out, "~~ Freelens K8s Proxy, '%s' ~~\n", version)
 	if kubeconfig != "" {
-		fmt.Printf("kubeconfig: %s\n", kubeconfig)
+		_, _ = fmt.Fprintf(out, "kubeconfig: %s\n", kubeconfig)
 	} else {
-		fmt.Printf("kubeconfig: %s\n", os.Getenv("KUBECONFIG"))
+		_, _ = fmt.Fprintf(out, "kubeconfig: %s\n", os.Getenv("KUBECONFIG"))
 	}
-	fmt.Printf("api prefix: %s\n", apiPrefix)
+	_, _ = fmt.Fprintf(out, "api prefix: %s\n", apiPrefix)
 
 	config := genericclioptions.NewConfigFlags(false)
 
@@ -177,7 +181,7 @@ func runProxy(v *viper.Viper) error {
 		return fmt.Errorf("failed to get listener: %w", err)
 	}
 
-	fmt.Printf("starting to serve on %s\n", l.Addr().String())
+	_, _ = fmt.Fprintf(out, "starting to serve on %s\n", l.Addr().String())
 
 	httpServer := &http.Server{
 		Handler: mux,
@@ -193,14 +197,14 @@ func runProxy(v *viper.Viper) error {
 	}()
 
 	select {
-	case <-done:
+	case <-ctx.Done():
 	case err := <-serveErr:
 		if err != http.ErrServerClosed {
 			return err
 		}
 	}
 
-	fmt.Println("shutting down ...")
+	_, _ = fmt.Fprintln(out, "shutting down ...")
 
 	_ = l.Close()
 
