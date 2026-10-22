@@ -1,10 +1,11 @@
 name: Test
 
 on:
+  # A branch is tested by its pull request, so a push to it would only run
+  # the same test twice.
   push:
-    branches-ignore:
-      - automated/*
-      - renovate/*
+    branches:
+      - main
     paths-ignore:
       - .editorconfig
       - .gitignore
