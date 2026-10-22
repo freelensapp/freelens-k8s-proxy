@@ -7,10 +7,16 @@ development tasks, troubleshooting patterns, and key architectural decisions.
 Use this as a reference when working on the project.
 
 **freelens-k8s-proxy** is a more secure alternative to `kubectl proxy`. It is a
-single Go binary that starts an HTTP(S) proxy to the Kubernetes API server
-using a kubeconfig, with optional TLS support.
+single Go binary with subcommands: `proxy` starts an HTTP(S) proxy to the
+Kubernetes API server using a kubeconfig, with optional TLS support, and
+`credential` is an exec credential plugin for the kubeconfigs that Freelens
+generates.
 
-- **`main.go`** — Single entry point; all application logic
+- **`main.go`** — Entry point; the root, `proxy` and `version` commands
+- **`credential.go`** — The `credential` subcommand
+- **`credential_test.go`** — Tests of the `credential` subcommand
+- **`upgrade_proxy.go`** — Proxying of upgrade requests (exec, attach,
+  port-forward)
 - **`go.mod`** / **`go.sum`** — Go module dependencies
 - **`Makefile`** — Build and development targets
 - **`.goreleaser.yaml`** — Release build configuration
@@ -60,6 +66,7 @@ make install           # Build and install binary to $PATH
 make tidy              # Tidy Go modules
 make upgrade           # Upgrade Go modules
 make clean             # Remove built binary and dist/
+go test ./...          # Run the tests
 ```
 
 ### Build Details
@@ -97,7 +104,10 @@ make build
 
 ```text
 freelens-k8s-proxy/
-├── main.go              # Application entry point
+├── main.go              # Entry point, root, proxy and version commands
+├── credential.go        # credential subcommand
+├── credential_test.go   # Tests of the credential subcommand
+├── upgrade_proxy.go     # Proxying of upgrade requests
 ├── go.mod               # Go module definition
 ├── go.sum               # Dependency checksums
 ├── Makefile             # Build targets
@@ -114,25 +124,58 @@ freelens-k8s-proxy/
 
 ### Adding a CLI Subcommand
 
-The binary supports a `version` subcommand. To add a new subcommand:
+The command line is parsed with [cobra](https://github.com/spf13/cobra), and
+the settings are read with [viper](https://github.com/spf13/viper) from flags
+and from variables with the prefix `FREELENS_PROXY_`.
 
-1. Add the command name check in `main()` alongside the existing `version` check
-2. Implement the logic in a new function or inline
-3. Follow the same pattern of writing JSON to stdout for machine-readable
+| Command                         | Purpose                                         |
+|---------------------------------|-------------------------------------------------|
+| `freelens-k8s-proxy`            | Help only                                       |
+| `freelens-k8s-proxy proxy`      | The proxy                                       |
+| `freelens-k8s-proxy credential` | `ExecCredential` on stdout                      |
+| `freelens-k8s-proxy version`    | JSON with `gitVersion` and `gitCommit`          |
+| `freelens-k8s-proxy --version`  | Plain text from cobra                           |
+
+To add a new subcommand:
+
+1. Write a `new<Name>Cmd` function that returns a `*cobra.Command` with
+   `RunE`, in a file of its own when it is more than a few lines
+2. Register it with `rootCmd.AddCommand` in `newRootCmd()`
+3. Bind its settings on the `*viper.Viper` passed from `newRootCmd()`, with
+   `BindEnv` for the `FREELENS_PROXY_` variable and `BindPFlags` for flags
+4. Write to `cmd.OutOrStdout()` and return errors instead of exiting, so that
+   cobra prints them on stderr and the tests can capture the output
+5. Follow the same pattern of writing JSON to stdout for machine-readable
    output
+
+Secrets (`FREELENS_PROXY_CERT`, `FREELENS_PROXY_KEY`, `FREELENS_PROXY_TOKEN`)
+have no flags, because a value on the command line is visible in `ps`. Never
+put them into an error message or a log.
 
 ### Changing Proxy Behavior
 
 The proxy is created using `k8s.io/kubectl/pkg/proxy`. Key configuration comes
-from environment variables:
+from environment variables and flags of the `proxy` subcommand:
 
-| Variable             | Purpose                      |
-|----------------------|------------------------------|
-| `KUBECONFIG`         | Path to kubeconfig file      |
-| `KUBECONFIG_CONTEXT` | Kubeconfig context name      |
-| `API_PREFIX`         | URL prefix for API requests  |
-| `PROXY_CERT`         | TLS certificate (PEM)        |
-| `PROXY_KEY`          | TLS private key (PEM)        |
+| Variable                    | Flag           | Purpose                      |
+|-----------------------------|----------------|------------------------------|
+| `KUBECONFIG`                | `--kubeconfig` | Path to kubeconfig file      |
+| `FREELENS_PROXY_CONTEXT`    | `--context`    | Kubeconfig context name      |
+| `FREELENS_PROXY_API_PREFIX` | `--api-prefix` | URL prefix for API requests  |
+| `FREELENS_PROXY_CERT`       | none           | TLS certificate (PEM)        |
+| `FREELENS_PROXY_KEY`        | none           | TLS private key (PEM)        |
+
+v1 read `KUBECONFIG_CONTEXT`, `API_PREFIX`, `PROXY_CERT` and `PROXY_KEY`, and
+started the proxy without a subcommand. v2 does neither.
+
+### Changing the Credential Subcommand
+
+`credential` is a Kubernetes exec credential plugin. It prints an
+`ExecCredential` with the token from `FREELENS_PROXY_TOKEN`, and its
+`apiVersion` follows `KUBERNETES_EXEC_INFO` (`v1` or `v1beta1`, `v1` when the
+variable is absent). It reads no kubeconfig, opens no listener and makes no
+network call, and prints nothing on stdout when it fails. The tests in
+`credential_test.go` cover each of these cases.
 
 ### Updating Dependencies
 
@@ -146,7 +189,7 @@ make build              # Verify build still works
 
 ```bash
 make build
-KUBECONFIG=~/.kube/config ./freelens-k8s-proxy
+KUBECONFIG=~/.kube/config ./freelens-k8s-proxy proxy
 ```
 
 ## Troubleshooting Patterns
@@ -163,7 +206,8 @@ KUBECONFIG=~/.kube/config ./freelens-k8s-proxy
 
 1. Verify `KUBECONFIG` points to a valid file
 2. Check `kubectl cluster-info` works with the same kubeconfig
-3. Ensure TLS certificates are valid if using `PROXY_CERT`/`PROXY_KEY`
+3. Ensure TLS certificates are valid if using
+   `FREELENS_PROXY_CERT`/`FREELENS_PROXY_KEY`
 4. Check the proxy is listening: look for `starting to serve on` in output
 
 ### Linting Errors
@@ -217,8 +261,8 @@ making it compatible with tooling that parses Kubernetes version information:
 
 ### TLS Support
 
-Optional TLS is configured via `PROXY_CERT` and `PROXY_KEY` environment
-variables. When both are set, the proxy listens with TLS 1.2+ and a curated
+Optional TLS is configured via `FREELENS_PROXY_CERT` and `FREELENS_PROXY_KEY`
+environment variables. When both are set, the proxy listens with TLS 1.2+ and a curated
 set of cipher suites. When absent, it listens on plain HTTP.
 
 ### Signal Handling
