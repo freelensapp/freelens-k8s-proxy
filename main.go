@@ -55,7 +55,7 @@ func newRootCmd() *cobra.Command {
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 
-	rootCmd.AddCommand(newProxyCmd(v), newVersionCmd())
+	rootCmd.AddCommand(newProxyCmd(v), newCredentialCmd(v), newVersionCmd())
 
 	return rootCmd
 }
