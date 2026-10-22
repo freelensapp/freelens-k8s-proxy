@@ -366,8 +366,14 @@ func (h *upgradePipeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		closeWrite(clientConn)
 		errCh <- err
 	}()
-	<-errCh
-	<-errCh
+	// A copy ends with an error when a side resets the connection instead of
+	// closing it, which a stream that is cut off does. It is only worth a
+	// verbose log.
+	for range 2 {
+		if err := <-errCh; err != nil {
+			klog.V(2).Infof("[UPGRADE-PIPE] copy: %v", err)
+		}
+	}
 }
 
 // closeWrite signals end-of-stream on the write side of conn if the
