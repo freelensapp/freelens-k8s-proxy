@@ -91,17 +91,6 @@ The token is not stored in the kubeconfig on disk, but it still reaches every
 process started with `FREELENS_PROXY_TOKEN` in its environment, as every
 process of a Freelens terminal is.
 
-### Breaking changes against v1
-
-- `freelens-k8s-proxy` without arguments prints the help. The proxy starts
-  with `freelens-k8s-proxy proxy`.
-- `KUBECONFIG_CONTEXT` is `FREELENS_PROXY_CONTEXT`, `API_PREFIX` is
-  `FREELENS_PROXY_API_PREFIX`, `PROXY_CERT` is `FREELENS_PROXY_CERT` and
-  `PROXY_KEY` is `FREELENS_PROXY_KEY`. `KUBECONFIG` keeps its name. The old
-  names are not read anymore.
-- Errors are printed on stderr as `Error: <message>`.
-- The Go module path is `github.com/freelensapp/freelens-k8s-proxy/v2`.
-
 ## How to build
 
 On Mac and Linux install tools using [mise](https://mise.jdx.dev/):
