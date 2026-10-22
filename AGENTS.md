@@ -18,6 +18,7 @@ generates.
 - **`proxy_test.go`** — Tests of the `proxy` subcommand
 - **`upgrade_proxy.go`** — Proxying of upgrade requests (exec, attach,
   port-forward)
+- **`upgrade_proxy_test.go`** — Tests of the proxying of upgrade requests
 - **`go.mod`** / **`go.sum`** — Go module dependencies
 - **`Makefile`** — Build and development targets
 - **`.goreleaser.yaml`** — Release build configuration
@@ -76,6 +77,12 @@ test against KinD runs only in the Test workflow (`.github/workflows/test.yaml`)
 The API server of a test has to serve TLS, because client-go sends the
 credentials of a kubeconfig only to an https server.
 
+`upgrade_proxy_test.go` covers the upgrade pipe, with an upstream that answers
+101 and echoes, and a CONNECT proxy. Two traps of `httptest`: every server
+shares one certificate, so the CA of another `httptest` server still verifies
+an upstream (`selfSignedCert` gives a different one), and with `EnableHTTP2`
+and no `NextProtos` a server offers `h2` alone.
+
 ### Build Details
 
 The build uses [goreleaser](https://goreleaser.com/) (configured in
@@ -116,6 +123,7 @@ freelens-k8s-proxy/
 ├── credential_test.go   # Tests of the credential subcommand
 ├── proxy_test.go        # Tests of the proxy subcommand
 ├── upgrade_proxy.go     # Proxying of upgrade requests
+├── upgrade_proxy_test.go # Tests of the proxying of upgrade requests
 ├── go.mod               # Go module definition
 ├── go.sum               # Dependency checksums
 ├── Makefile             # Build targets
