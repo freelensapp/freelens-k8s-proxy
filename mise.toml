@@ -1,6 +1,6 @@
 [tools]
 goreleaser = "2.18.3"
-yq = "4.54.1"
+yq = "4.54.3"
 
 [settings]
 # Go comes from .go-version, which editors read too. go.mod is disabled as a
