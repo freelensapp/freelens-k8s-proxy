@@ -40,7 +40,7 @@ tools:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - actionlint@1.17.0 # datasource=github-releases depName=kjanat/actionlint
+    - actionlint@1.17.1 # datasource=github-releases depName=kjanat/actionlint
     - git-diff-check
     - gofmt@1.27.3 # datasource=golang-version depName=go
     - golangci-lint2@2.15.0
