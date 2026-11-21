@@ -5,7 +5,7 @@ go 1.27.4
 require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	golang.org/x/net v0.62.0
+	golang.org/x/net v0.63.0
 	k8s.io/apimachinery v0.37.2
 	k8s.io/cli-runtime v0.37.2
 	k8s.io/client-go v0.37.2
@@ -22,7 +22,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.10.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
-	github.com/go-openapi/jsonpointer v1.0.2 // indirect
+	github.com/go-openapi/jsonpointer v1.0.3 // indirect
 	github.com/go-openapi/jsonreference v1.0.3 // indirect
 	github.com/go-openapi/swag v0.29.2 // indirect
 	github.com/go-openapi/swag/cmdutils v0.29.2 // indirect
